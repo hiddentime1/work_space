@@ -143,49 +143,44 @@ export default function Home() {
     ]);
   };
 
-  // 태스크 생성
-  const handleCreateTask = async (data: CreateTaskInput) => {
+  // 태스크 생성/수정 통합 핸들러
+  const handleSubmitTask = async (data: CreateTaskInput | UpdateTaskInput) => {
     try {
-      const res = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      const result = await res.json();
-      
-      if (result.success) {
-        showToast('업무가 추가되었습니다!', 'success');
-        setShowForm(false);
-        refreshData();
+      if (editingTask) {
+        // 수정
+        const res = await fetch(`/api/tasks/${editingTask.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+          showToast('업무가 수정되었습니다!', 'success');
+          setEditingTask(null);
+          refreshData();
+        } else {
+          showToast(result.error || '업무 수정에 실패했습니다.', 'error');
+        }
       } else {
-        showToast(result.error || '업무 추가에 실패했습니다.', 'error');
+        // 생성
+        const res = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+          showToast('업무가 추가되었습니다!', 'success');
+          setShowForm(false);
+          refreshData();
+        } else {
+          showToast(result.error || '업무 추가에 실패했습니다.', 'error');
+        }
       }
     } catch (error) {
-      showToast('업무 추가에 실패했습니다.', 'error');
-    }
-  };
-
-  // 태스크 수정
-  const handleUpdateTask = async (data: UpdateTaskInput) => {
-    if (!editingTask) return;
-    
-    try {
-      const res = await fetch(`/api/tasks/${editingTask.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      const result = await res.json();
-      
-      if (result.success) {
-        showToast('업무가 수정되었습니다!', 'success');
-        setEditingTask(null);
-        refreshData();
-      } else {
-        showToast(result.error || '업무 수정에 실패했습니다.', 'error');
-      }
-    } catch (error) {
-      showToast('업무 수정에 실패했습니다.', 'error');
+      showToast(editingTask ? '업무 수정에 실패했습니다.' : '업무 추가에 실패했습니다.', 'error');
     }
   };
 
@@ -420,7 +415,7 @@ export default function Home() {
       {(showForm || editingTask) && (
         <TaskForm
           task={editingTask}
-          onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
+          onSubmit={handleSubmitTask}
           onClose={() => {
             setShowForm(false);
             setEditingTask(null);
