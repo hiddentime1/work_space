@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { CreateTaskInput, ApiResponse, Task } from '@/types';
 
+// 동적 라우트로 설정 (빌드 시 사전 렌더링 방지)
+export const dynamic = 'force-dynamic';
+
 // GET - 모든 태스크 조회
 export async function GET(request: NextRequest) {
   try {

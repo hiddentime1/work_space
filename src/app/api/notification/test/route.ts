@@ -3,6 +3,8 @@ import { createServerSupabaseClient } from '@/lib/supabase';
 import { sendKakaoMessage, refreshKakaoToken } from '@/lib/kakao';
 import { ApiResponse } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 // POST - 테스트 메시지 전송
 export async function POST() {
   try {

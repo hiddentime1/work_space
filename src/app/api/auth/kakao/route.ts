@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getKakaoAuthUrl } from '@/lib/kakao';
 
+export const dynamic = 'force-dynamic';
+
 // GET - 카카오 로그인 URL 반환
 export async function GET() {
   try {

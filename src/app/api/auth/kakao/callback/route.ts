@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getKakaoToken } from '@/lib/kakao';
 import { createServerSupabaseClient } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 // GET - 카카오 콜백 처리
 export async function GET(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || '/';

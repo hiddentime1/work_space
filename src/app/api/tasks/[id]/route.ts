@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { UpdateTaskInput, ApiResponse, Task } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 // GET - 특정 태스크 조회
 export async function GET(
   request: NextRequest,

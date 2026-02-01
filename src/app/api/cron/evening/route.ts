@@ -3,6 +3,8 @@ import { createServerSupabaseClient } from '@/lib/supabase';
 import { sendKakaoMessage, refreshKakaoToken, formatEveningReminder } from '@/lib/kakao';
 import { startOfDay, endOfDay } from 'date-fns';
 
+export const dynamic = 'force-dynamic';
+
 // Vercel Cron에서 호출 - 저녁 리마인더 (미완료 체크)
 export async function GET(request: NextRequest) {
   try {

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase';
 import { ApiResponse, NotificationSettings } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 // GET - 알림 설정 조회
 export async function GET() {
   try {

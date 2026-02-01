@@ -3,6 +3,8 @@ import { createServerSupabaseClient } from '@/lib/supabase';
 import { ApiResponse, DashboardStats } from '@/types';
 import { startOfDay, endOfDay } from 'date-fns';
 
+export const dynamic = 'force-dynamic';
+
 // GET - 대시보드 통계 조회
 export async function GET() {
   try {
