@@ -8,6 +8,13 @@ export async function POST() {
   try {
     const supabase = createServerSupabaseClient();
     
+    if (!supabase) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        error: 'Database not configured'
+      }, { status: 503 });
+    }
+    
     // 알림 설정 조회
     const { data: settings, error } = await supabase
       .from('notification_settings')
@@ -34,17 +41,19 @@ export async function POST() {
       try {
         const newTokenData = await refreshKakaoToken(settings.kakao_refresh_token);
         
-        // 새 토큰 저장
-        await supabase
-          .from('notification_settings')
-          .update({
-            kakao_access_token: newTokenData.access_token,
-            kakao_refresh_token: newTokenData.refresh_token || settings.kakao_refresh_token,
-          })
-          .eq('id', settings.id);
+        if (newTokenData) {
+          // 새 토큰 저장
+          await supabase
+            .from('notification_settings')
+            .update({
+              kakao_access_token: newTokenData.access_token,
+              kakao_refresh_token: newTokenData.refresh_token || settings.kakao_refresh_token,
+            })
+            .eq('id', settings.id);
 
-        // 재시도
-        success = await sendKakaoMessage(newTokenData.access_token, testMessage);
+          // 재시도
+          success = await sendKakaoMessage(newTokenData.access_token, testMessage);
+        }
       } catch (refreshError) {
         console.error('토큰 갱신 실패:', refreshError);
       }

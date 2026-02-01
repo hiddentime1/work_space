@@ -6,6 +6,12 @@ import { CreateTaskInput, ApiResponse, Task } from '@/types';
 export async function GET(request: NextRequest) {
   try {
     const supabase = createServerSupabaseClient();
+    if (!supabase) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        error: 'Database not configured'
+      }, { status: 503 });
+    }
     const { searchParams } = new URL(request.url);
     
     const status = searchParams.get('status');
@@ -72,6 +78,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = createServerSupabaseClient();
+    if (!supabase) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        error: 'Database not configured'
+      }, { status: 503 });
+    }
     const body: CreateTaskInput = await request.json();
 
     if (!body.title?.trim()) {

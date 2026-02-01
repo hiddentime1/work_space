@@ -7,6 +7,13 @@ export async function GET() {
   try {
     const supabase = createServerSupabaseClient();
     
+    if (!supabase) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: true,
+        data: null
+      });
+    }
+    
     const { data, error } = await supabase
       .from('notification_settings')
       .select('*')
@@ -44,6 +51,14 @@ export async function GET() {
 export async function PATCH(request: NextRequest) {
   try {
     const supabase = createServerSupabaseClient();
+    
+    if (!supabase) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        error: 'Database not configured'
+      }, { status: 503 });
+    }
+    
     const body = await request.json();
 
     // 수정 가능한 필드만 추출

@@ -6,6 +6,13 @@ export async function GET() {
   try {
     const authUrl = getKakaoAuthUrl();
     
+    if (!authUrl) {
+      return NextResponse.json({
+        success: false,
+        error: '카카오 설정이 되어있지 않습니다'
+      }, { status: 503 });
+    }
+    
     return NextResponse.json({
       success: true,
       data: { authUrl }

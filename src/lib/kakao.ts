@@ -8,9 +8,13 @@ export function getKakaoAuthUrl() {
   const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
   const redirectUri = process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI;
   
+  if (!clientId || !redirectUri) {
+    return null;
+  }
+  
   const params = new URLSearchParams({
-    client_id: clientId!,
-    redirect_uri: redirectUri!,
+    client_id: clientId,
+    redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'talk_message',
   });
@@ -19,10 +23,14 @@ export function getKakaoAuthUrl() {
 }
 
 // 인가 코드로 액세스 토큰 발급
-export async function getKakaoToken(code: string): Promise<KakaoTokenResponse> {
+export async function getKakaoToken(code: string): Promise<KakaoTokenResponse | null> {
   const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
   const clientSecret = process.env.KAKAO_CLIENT_SECRET;
   const redirectUri = process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI;
+
+  if (!clientId || !clientSecret || !redirectUri) {
+    return null;
+  }
 
   const response = await fetch(`${KAKAO_AUTH_URL}/oauth/token`, {
     method: 'POST',
@@ -31,9 +39,9 @@ export async function getKakaoToken(code: string): Promise<KakaoTokenResponse> {
     },
     body: new URLSearchParams({
       grant_type: 'authorization_code',
-      client_id: clientId!,
-      client_secret: clientSecret!,
-      redirect_uri: redirectUri!,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
       code,
     }),
   });
@@ -47,9 +55,13 @@ export async function getKakaoToken(code: string): Promise<KakaoTokenResponse> {
 }
 
 // 리프레시 토큰으로 액세스 토큰 갱신
-export async function refreshKakaoToken(refreshToken: string): Promise<KakaoTokenResponse> {
+export async function refreshKakaoToken(refreshToken: string): Promise<KakaoTokenResponse | null> {
   const clientId = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
   const clientSecret = process.env.KAKAO_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    return null;
+  }
 
   const response = await fetch(`${KAKAO_AUTH_URL}/oauth/token`, {
     method: 'POST',
@@ -58,8 +70,8 @@ export async function refreshKakaoToken(refreshToken: string): Promise<KakaoToke
     },
     body: new URLSearchParams({
       grant_type: 'refresh_token',
-      client_id: clientId!,
-      client_secret: clientSecret!,
+      client_id: clientId,
+      client_secret: clientSecret,
       refresh_token: refreshToken,
     }),
   });

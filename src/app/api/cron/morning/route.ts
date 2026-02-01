@@ -13,6 +13,10 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = createServerSupabaseClient();
+    
+    if (!supabase) {
+      return NextResponse.json({ success: false, message: 'Database not configured' });
+    }
 
     // 알림 설정 조회
     const { data: settings, error: settingsError } = await supabase
@@ -55,15 +59,17 @@ export async function GET(request: NextRequest) {
       try {
         const newTokenData = await refreshKakaoToken(settings.kakao_refresh_token);
         
-        await supabase
-          .from('notification_settings')
-          .update({
-            kakao_access_token: newTokenData.access_token,
-            kakao_refresh_token: newTokenData.refresh_token || settings.kakao_refresh_token,
-          })
-          .eq('id', settings.id);
+        if (newTokenData) {
+          await supabase
+            .from('notification_settings')
+            .update({
+              kakao_access_token: newTokenData.access_token,
+              kakao_refresh_token: newTokenData.refresh_token || settings.kakao_refresh_token,
+            })
+            .eq('id', settings.id);
 
-        success = await sendKakaoMessage(newTokenData.access_token, message);
+          success = await sendKakaoMessage(newTokenData.access_token, message);
+        }
       } catch (refreshError) {
         console.error('토큰 갱신 실패:', refreshError);
       }

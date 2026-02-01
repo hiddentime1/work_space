@@ -7,6 +7,12 @@ import { startOfDay, endOfDay } from 'date-fns';
 export async function GET() {
   try {
     const supabase = createServerSupabaseClient();
+    if (!supabase) {
+      return NextResponse.json<ApiResponse<DashboardStats>>({
+        success: true,
+        data: { total: 0, pending: 0, in_progress: 0, completed: 0, overdue: 0, completedToday: 0, dueToday: 0 }
+      });
+    }
 
     const { data: tasks, error } = await supabase
       .from('tasks')

@@ -9,6 +9,12 @@ export async function GET(
 ) {
   try {
     const supabase = createServerSupabaseClient();
+    if (!supabase) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        error: 'Database not configured'
+      }, { status: 503 });
+    }
     const { id } = params;
 
     const { data, error } = await supabase
@@ -44,6 +50,12 @@ export async function PATCH(
 ) {
   try {
     const supabase = createServerSupabaseClient();
+    if (!supabase) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        error: 'Database not configured'
+      }, { status: 503 });
+    }
     const { id } = params;
     const body: UpdateTaskInput = await request.json();
 
@@ -90,6 +102,12 @@ export async function DELETE(
 ) {
   try {
     const supabase = createServerSupabaseClient();
+    if (!supabase) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        error: 'Database not configured'
+      }, { status: 503 });
+    }
     const { id } = params;
 
     const { error } = await supabase
