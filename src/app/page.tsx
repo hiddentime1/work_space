@@ -1,14 +1,20 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Task, CreateTaskInput, UpdateTaskInput, DashboardStats, TaskStatus, Priority } from '@/types';
 import Dashboard from '@/components/Dashboard';
 import TaskCard from '@/components/TaskCard';
 import TaskForm from '@/components/TaskForm';
 import KakaoConnect from '@/components/KakaoConnect';
 import FilterBar, { SortOption, SortOrder } from '@/components/FilterBar';
+import CalendarView from '@/components/CalendarView';
+import OverdueTasksModal from '@/components/OverdueTasksModal';
+import BulkActionBar from '@/components/BulkActionBar';
 import Toast, { useToast, ToastData } from '@/components/Toast';
-import { Plus, Bell, RefreshCw, ListTodo } from 'lucide-react';
+import { Plus, Bell, RefreshCw, ListTodo, Calendar, List } from 'lucide-react';
+import { isPast, isToday, startOfDay, addDays } from 'date-fns';
+
+type ViewMode = 'list' | 'calendar';
 
 export default function Home() {
   // 상태 관리
@@ -21,6 +27,9 @@ export default function Home() {
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   
+  // 뷰 모드
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  
   // 필터 & 정렬
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<Priority | 'all'>('all');
@@ -31,11 +40,35 @@ export default function Home() {
   const [isKakaoConnected, setIsKakaoConnected] = useState(false);
   const [isNotificationActive, setIsNotificationActive] = useState(true);
   
+  // 미완료 업무 팝업
+  const [showOverdueModal, setShowOverdueModal] = useState(false);
+  const hasCheckedOverdue = useRef(false);
+  
   // 토스트
   const { toasts, showToast, removeToast } = useToast();
 
   // 초기 로드 여부 (중복 호출 방지)
   const isInitialized = useRef(false);
+
+  // 지난 날짜의 미완료 업무 (어제 이전)
+  const overdueTasks = useMemo(() => {
+    const today = startOfDay(new Date());
+    return tasks.filter(task => {
+      if (task.status === 'completed') return false;
+      if (!task.due_date) return false;
+      const dueDate = startOfDay(new Date(task.due_date));
+      return dueDate < today;
+    });
+  }, [tasks]);
+
+  // 오늘 미완료 업무
+  const incompleteTodayTasks = useMemo(() => {
+    return tasks.filter(task => {
+      if (task.status === 'completed') return false;
+      if (!task.due_date) return false;
+      return isToday(new Date(task.due_date));
+    });
+  }, [tasks]);
 
   // 데이터 로드 함수
   const fetchTasks = async (
@@ -115,6 +148,14 @@ export default function Home() {
     }
   }, []);
 
+  // 미완료 업무 체크 (데이터 로드 후 한 번만)
+  useEffect(() => {
+    if (!isLoading && !hasCheckedOverdue.current && overdueTasks.length > 0) {
+      hasCheckedOverdue.current = true;
+      setShowOverdueModal(true);
+    }
+  }, [isLoading, overdueTasks.length]);
+
   // 필터 변경 핸들러
   const handleFilterChange = async (
     newStatus?: TaskStatus | 'all',
@@ -147,7 +188,6 @@ export default function Home() {
   const handleSubmitTask = async (data: CreateTaskInput | UpdateTaskInput) => {
     try {
       if (editingTask) {
-        // 수정
         const res = await fetch(`/api/tasks/${editingTask.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -163,7 +203,6 @@ export default function Home() {
           showToast(result.error || '업무 수정에 실패했습니다.', 'error');
         }
       } else {
-        // 생성
         const res = await fetch('/api/tasks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -223,6 +262,81 @@ export default function Home() {
       }
     } catch (error) {
       showToast('삭제에 실패했습니다.', 'error');
+    }
+  };
+
+  // 태스크 날짜 이동
+  const handleMoveTask = async (taskId: string, newDate: string) => {
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ due_date: new Date(newDate).toISOString() }),
+      });
+      const result = await res.json();
+      
+      if (result.success) {
+        showToast('업무가 이동되었습니다.', 'success');
+        refreshData();
+      }
+    } catch (error) {
+      showToast('이동에 실패했습니다.', 'error');
+    }
+  };
+
+  // 오늘로 이관
+  const handleMoveToToday = async (taskId: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    await handleMoveTask(taskId, today);
+  };
+
+  // 전체 오늘로 이관
+  const handleMoveAllToToday = async () => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    try {
+      await Promise.all(
+        overdueTasks.map(task => 
+          fetch(`/api/tasks/${task.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ due_date: new Date(today).toISOString() }),
+          })
+        )
+      );
+      showToast(`${overdueTasks.length}개 업무가 오늘로 이관되었습니다.`, 'success');
+      setShowOverdueModal(false);
+      refreshData();
+    } catch (error) {
+      showToast('이관에 실패했습니다.', 'error');
+    }
+  };
+
+  // 오늘 미완료 업무 내일로 이관
+  const handleMoveIncompleteTodayToTomorrow = async () => {
+    const tomorrow = addDays(new Date(), 1).toISOString().split('T')[0];
+    
+    if (incompleteTodayTasks.length === 0) {
+      showToast('이관할 업무가 없습니다.', 'info');
+      return;
+    }
+
+    if (!confirm(`${incompleteTodayTasks.length}개의 미완료 업무를 내일로 이관하시겠습니까?`)) return;
+    
+    try {
+      await Promise.all(
+        incompleteTodayTasks.map(task => 
+          fetch(`/api/tasks/${task.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ due_date: new Date(tomorrow).toISOString() }),
+          })
+        )
+      );
+      showToast(`${incompleteTodayTasks.length}개 업무가 내일로 이관되었습니다.`, 'success');
+      refreshData();
+    } catch (error) {
+      showToast('이관에 실패했습니다.', 'error');
     }
   };
 
@@ -289,7 +403,7 @@ export default function Home() {
     <main className="min-h-screen pb-20 bg-gray-50">
       {/* 헤더 */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-4 py-4">
+        <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="bg-gray-900 p-2 rounded-lg">
@@ -302,6 +416,28 @@ export default function Home() {
             </div>
             
             <div className="flex items-center gap-2">
+              {/* 뷰 모드 전환 */}
+              <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-1.5 rounded transition-colors ${
+                    viewMode === 'list' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'
+                  }`}
+                  title="리스트 보기"
+                >
+                  <List className={`w-4 h-4 ${viewMode === 'list' ? 'text-gray-900' : 'text-gray-500'}`} />
+                </button>
+                <button
+                  onClick={() => setViewMode('calendar')}
+                  className={`p-1.5 rounded transition-colors ${
+                    viewMode === 'calendar' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'
+                  }`}
+                  title="캘린더 보기"
+                >
+                  <Calendar className={`w-4 h-4 ${viewMode === 'calendar' ? 'text-gray-900' : 'text-gray-500'}`} />
+                </button>
+              </div>
+              
               <button 
                 onClick={handleRefresh}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -321,94 +457,119 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className="max-w-6xl mx-auto px-4 py-6">
         {/* 대시보드 */}
         <section className="mb-6">
           <Dashboard stats={stats} />
         </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* 왼쪽: 업무 목록 */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* 필터 */}
-            <FilterBar
-              statusFilter={statusFilter}
-              priorityFilter={priorityFilter}
-              sortBy={sortBy}
-              sortOrder={sortOrder}
-              onStatusFilterChange={(v) => handleFilterChange(v)}
-              onPriorityFilterChange={(v) => handleFilterChange(undefined, v)}
-              onSortChange={(v) => handleFilterChange(undefined, undefined, v)}
-              onSortOrderChange={(v) => handleFilterChange(undefined, undefined, undefined, v)}
-            />
-
-            {/* 업무 목록 */}
-            <div className="space-y-2">
-              {isLoading ? (
-                <div className="text-center py-12">
-                  <RefreshCw className="w-6 h-6 text-gray-400 animate-spin mx-auto mb-2" />
-                  <p className="text-gray-500 text-sm">로딩중...</p>
-                </div>
-              ) : tasks.length === 0 ? (
-                <div className="bg-white rounded-xl p-10 text-center border border-gray-200">
-                  <div className="bg-gray-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <ListTodo className="w-6 h-6 text-gray-400" />
-                  </div>
-                  <h3 className="font-medium text-gray-700 mb-1">업무가 없습니다</h3>
-                  <p className="text-gray-500 text-sm mb-4">새로운 업무를 추가해보세요</p>
-                  <button 
-                    onClick={() => setShowForm(true)}
-                    className="btn-primary inline-flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    업무 추가
-                  </button>
-                </div>
-              ) : (
-                tasks.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    onToggleComplete={handleToggleComplete}
-                    onEdit={setEditingTask}
-                    onDelete={handleDeleteTask}
-                  />
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* 오른쪽: 사이드바 */}
+        {/* 캘린더 뷰 */}
+        {viewMode === 'calendar' ? (
           <div className="space-y-4">
-            {/* 카카오톡 연결 */}
-            <KakaoConnect
-              isConnected={isKakaoConnected}
-              isActive={isNotificationActive}
-              onConnect={handleKakaoConnect}
-              onToggleActive={handleToggleNotification}
-              onTestNotification={handleTestNotification}
+            {/* 오늘 미완료 업무 일괄 이관 바 */}
+            <BulkActionBar
+              incompleteTodayCount={incompleteTodayTasks.length}
+              onMoveToTomorrow={handleMoveIncompleteTodayToTomorrow}
             />
+            
+            <CalendarView
+              tasks={tasks}
+              onToggleComplete={handleToggleComplete}
+              onMoveTask={handleMoveTask}
+              onEditTask={setEditingTask}
+            />
+          </div>
+        ) : (
+          /* 리스트 뷰 */
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* 왼쪽: 업무 목록 */}
+            <div className="lg:col-span-2 space-y-4">
+              {/* 오늘 미완료 업무 일괄 이관 바 */}
+              <BulkActionBar
+                incompleteTodayCount={incompleteTodayTasks.length}
+                onMoveToTomorrow={handleMoveIncompleteTodayToTomorrow}
+              />
+              
+              {/* 필터 */}
+              <FilterBar
+                statusFilter={statusFilter}
+                priorityFilter={priorityFilter}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onStatusFilterChange={(v) => handleFilterChange(v)}
+                onPriorityFilterChange={(v) => handleFilterChange(undefined, v)}
+                onSortChange={(v) => handleFilterChange(undefined, undefined, v)}
+                onSortOrderChange={(v) => handleFilterChange(undefined, undefined, undefined, v)}
+              />
 
-            {/* 알림 안내 */}
-            <div className="bg-white rounded-xl p-4 border border-gray-200">
-              <h3 className="font-medium text-gray-800 mb-3 text-sm">알림 안내</h3>
-              <ul className="space-y-2 text-xs text-gray-600">
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
-                  매일 오전 9시 - 오늘 할 일 알림
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
-                  매일 오후 6시 - 미완료 업무 체크
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
-                  "~~ 했나요?" 형태로 리마인드
-                </li>
-              </ul>
+              {/* 업무 목록 */}
+              <div className="space-y-2">
+                {isLoading ? (
+                  <div className="text-center py-12">
+                    <RefreshCw className="w-6 h-6 text-gray-400 animate-spin mx-auto mb-2" />
+                    <p className="text-gray-500 text-sm">로딩중...</p>
+                  </div>
+                ) : tasks.length === 0 ? (
+                  <div className="bg-white rounded-xl p-10 text-center border border-gray-200">
+                    <div className="bg-gray-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <ListTodo className="w-6 h-6 text-gray-400" />
+                    </div>
+                    <h3 className="font-medium text-gray-700 mb-1">업무가 없습니다</h3>
+                    <p className="text-gray-500 text-sm mb-4">새로운 업무를 추가해보세요</p>
+                    <button 
+                      onClick={() => setShowForm(true)}
+                      className="btn-primary inline-flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      업무 추가
+                    </button>
+                  </div>
+                ) : (
+                  tasks.map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      onToggleComplete={handleToggleComplete}
+                      onEdit={setEditingTask}
+                      onDelete={handleDeleteTask}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* 오른쪽: 사이드바 */}
+            <div className="space-y-4">
+              {/* 카카오톡 연결 */}
+              <KakaoConnect
+                isConnected={isKakaoConnected}
+                isActive={isNotificationActive}
+                onConnect={handleKakaoConnect}
+                onToggleActive={handleToggleNotification}
+                onTestNotification={handleTestNotification}
+              />
+
+              {/* 알림 안내 */}
+              <div className="bg-white rounded-xl p-4 border border-gray-200">
+                <h3 className="font-medium text-gray-800 mb-3 text-sm">알림 안내</h3>
+                <ul className="space-y-2 text-xs text-gray-600">
+                  <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
+                    매일 오전 9시 - 오늘 할 일 알림
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
+                    매일 오후 6시 - 미완료 업무 체크
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
+                    "~~ 했나요?" 형태로 리마인드
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* 모달: 업무 추가/수정 */}
@@ -420,6 +581,20 @@ export default function Home() {
             setShowForm(false);
             setEditingTask(null);
           }}
+        />
+      )}
+
+      {/* 모달: 미완료 업무 (어제 이전) */}
+      {showOverdueModal && (
+        <OverdueTasksModal
+          tasks={overdueTasks}
+          onClose={() => setShowOverdueModal(false)}
+          onMoveToToday={handleMoveToToday}
+          onMoveAllToToday={handleMoveAllToToday}
+          onComplete={async (taskId) => {
+            await handleToggleComplete(tasks.find(t => t.id === taskId)!);
+          }}
+          onDelete={handleDeleteTask}
         />
       )}
 

@@ -17,12 +17,19 @@ const priorityOptions: { value: Priority; label: string }[] = [
   { value: 'urgent', label: '긴급' },
 ];
 
+// 오늘 날짜를 YYYY-MM-DD 형식으로 반환
+const getTodayString = () => {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
+};
+
 export default function TaskForm({ task, onSubmit, onClose }: TaskFormProps) {
   const [title, setTitle] = useState(task?.title || '');
   const [description, setDescription] = useState(task?.description || '');
   const [priority, setPriority] = useState<Priority>(task?.priority || 'medium');
+  // 새 업무는 기본값 오늘, 수정 시에는 기존 날짜 유지
   const [dueDate, setDueDate] = useState(
-    task?.due_date ? task.due_date.split('T')[0] : ''
+    task?.due_date ? task.due_date.split('T')[0] : getTodayString()
   );
   const [category, setCategory] = useState(task?.category || '');
 
@@ -130,7 +137,7 @@ export default function TaskForm({ task, onSubmit, onClose }: TaskFormProps) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1.5 block">
-                마감일 <span className="text-gray-400 font-normal">(선택)</span>
+                마감일
               </label>
               <input
                 type="date"
