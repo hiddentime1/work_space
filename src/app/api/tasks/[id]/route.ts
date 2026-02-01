@@ -51,7 +51,7 @@ export async function PATCH(
     const updateData: Record<string, unknown> = { ...body };
     if (body.status === 'completed') {
       updateData.completed_at = new Date().toISOString();
-    } else if (body.status && body.status !== 'completed') {
+    } else if (body.status) {
       updateData.completed_at = null;
     }
 
