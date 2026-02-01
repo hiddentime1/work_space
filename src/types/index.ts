@@ -82,3 +82,21 @@ export interface DashboardStats {
   completedToday: number;
   dueToday: number;
 }
+
+// 메모 인터페이스
+export interface Memo {
+  id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// 메모 생성 타입
+export interface CreateMemoInput {
+  content: string;
+}
+
+// 메모 수정 타입
+export interface UpdateMemoInput {
+  content?: string;
+}

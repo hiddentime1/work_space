@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Task, CreateTaskInput, UpdateTaskInput, DashboardStats, TaskStatus, Priority } from '@/types';
+import { Task, CreateTaskInput, UpdateTaskInput, DashboardStats, Priority, Memo } from '@/types';
 import Dashboard from '@/components/Dashboard';
 import TaskCard from '@/components/TaskCard';
 import TaskForm from '@/components/TaskForm';
@@ -10,15 +10,17 @@ import FilterBar, { SortOption, SortOrder } from '@/components/FilterBar';
 import CalendarView from '@/components/CalendarView';
 import OverdueTasksModal from '@/components/OverdueTasksModal';
 import BulkActionBar from '@/components/BulkActionBar';
+import MemoButton from '@/components/MemoButton';
 import Toast, { useToast, ToastData } from '@/components/Toast';
 import { Plus, Bell, RefreshCw, ListTodo, Calendar, List } from 'lucide-react';
-import { isPast, isToday, startOfDay, addDays } from 'date-fns';
+import { isToday, startOfDay, addDays } from 'date-fns';
 
 type ViewMode = 'list' | 'calendar';
 
 export default function Home() {
   // 상태 관리
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [memos, setMemos] = useState<Memo[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     total: 0, pending: 0, in_progress: 0, completed: 0, 
     overdue: 0, completedToday: 0, dueToday: 0
@@ -26,15 +28,15 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   
-  // 뷰 모드
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  // 뷰 모드 (기본: 캘린더)
+  const [viewMode, setViewMode] = useState<ViewMode>('calendar');
   
   // 필터 & 정렬
-  const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<Priority | 'all'>('all');
-  const [sortBy, setSortBy] = useState<SortOption>('created_at');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [sortBy, setSortBy] = useState<SortOption>('due_date');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   
   // 카카오 연결 상태
   const [isKakaoConnected, setIsKakaoConnected] = useState(false);
@@ -72,14 +74,12 @@ export default function Home() {
 
   // 데이터 로드 함수
   const fetchTasks = async (
-    status: TaskStatus | 'all',
     priority: Priority | 'all',
     sort: SortOption,
     order: SortOrder
   ) => {
     try {
       const params = new URLSearchParams();
-      if (status !== 'all') params.append('status', status);
       if (priority !== 'all') params.append('priority', priority);
       params.append('sortBy', sort);
       params.append('sortOrder', order);
@@ -106,6 +106,18 @@ export default function Home() {
     }
   };
 
+  const fetchMemos = async () => {
+    try {
+      const res = await fetch('/api/memos');
+      const data = await res.json();
+      if (data.success) {
+        setMemos(data.data);
+      }
+    } catch (error) {
+      console.error('메모 로드 실패:', error);
+    }
+  };
+
   const fetchNotificationSettings = async () => {
     try {
       const res = await fetch('/api/notification/settings');
@@ -127,8 +139,9 @@ export default function Home() {
     const loadData = async () => {
       setIsLoading(true);
       await Promise.all([
-        fetchTasks(statusFilter, priorityFilter, sortBy, sortOrder),
+        fetchTasks(priorityFilter, sortBy, sortOrder),
         fetchStats(),
+        fetchMemos(),
         fetchNotificationSettings()
       ]);
       setIsLoading(false);
@@ -158,28 +171,25 @@ export default function Home() {
 
   // 필터 변경 핸들러
   const handleFilterChange = async (
-    newStatus?: TaskStatus | 'all',
     newPriority?: Priority | 'all',
     newSortBy?: SortOption,
     newSortOrder?: SortOrder
   ) => {
-    const status = newStatus ?? statusFilter;
     const priority = newPriority ?? priorityFilter;
     const sort = newSortBy ?? sortBy;
     const order = newSortOrder ?? sortOrder;
 
-    if (newStatus !== undefined) setStatusFilter(status);
     if (newPriority !== undefined) setPriorityFilter(priority);
     if (newSortBy !== undefined) setSortBy(sort);
     if (newSortOrder !== undefined) setSortOrder(order);
 
-    await fetchTasks(status, priority, sort, order);
+    await fetchTasks(priority, sort, order);
   };
 
   // 데이터 새로고침 (태스크 + 통계)
   const refreshData = async () => {
     await Promise.all([
-      fetchTasks(statusFilter, priorityFilter, sortBy, sortOrder),
+      fetchTasks(priorityFilter, sortBy, sortOrder),
       fetchStats()
     ]);
   };
@@ -203,16 +213,22 @@ export default function Home() {
           showToast(result.error || '업무 수정에 실패했습니다.', 'error');
         }
       } else {
+        // 선택된 날짜가 있으면 해당 날짜로 설정
+        const taskData = selectedDate 
+          ? { ...data, due_date: new Date(selectedDate).toISOString() }
+          : data;
+          
         const res = await fetch('/api/tasks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
+          body: JSON.stringify(taskData),
         });
         const result = await res.json();
         
         if (result.success) {
           showToast('업무가 추가되었습니다!', 'success');
           setShowForm(false);
+          setSelectedDate(null);
           refreshData();
         } else {
           showToast(result.error || '업무 추가에 실패했습니다.', 'error');
@@ -284,6 +300,12 @@ export default function Home() {
     }
   };
 
+  // 캘린더에서 날짜 클릭 시 해당 날짜로 업무 추가
+  const handleAddTaskOnDate = (date: string) => {
+    setSelectedDate(date);
+    setShowForm(true);
+  };
+
   // 오늘로 이관
   const handleMoveToToday = async (taskId: string) => {
     const today = new Date().toISOString().split('T')[0];
@@ -337,6 +359,42 @@ export default function Home() {
       refreshData();
     } catch (error) {
       showToast('이관에 실패했습니다.', 'error');
+    }
+  };
+
+  // 메모 저장
+  const handleSaveMemo = async (content: string) => {
+    try {
+      const res = await fetch('/api/memos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      });
+      const result = await res.json();
+      
+      if (result.success) {
+        showToast('메모가 저장되었습니다.', 'success');
+        fetchMemos();
+      } else {
+        showToast(result.error || '메모 저장에 실패했습니다.', 'error');
+      }
+    } catch (error) {
+      showToast('메모 저장에 실패했습니다.', 'error');
+    }
+  };
+
+  // 메모 삭제
+  const handleDeleteMemo = async (id: string) => {
+    try {
+      const res = await fetch(`/api/memos/${id}`, { method: 'DELETE' });
+      const result = await res.json();
+      
+      if (result.success) {
+        setMemos(memos.filter(m => m.id !== id));
+        showToast('메모가 삭제되었습니다.', 'info');
+      }
+    } catch (error) {
+      showToast('메모 삭제에 실패했습니다.', 'error');
     }
   };
 
@@ -477,6 +535,7 @@ export default function Home() {
               onToggleComplete={handleToggleComplete}
               onMoveTask={handleMoveTask}
               onEditTask={setEditingTask}
+              onAddTask={handleAddTaskOnDate}
             />
           </div>
         ) : (
@@ -492,14 +551,12 @@ export default function Home() {
               
               {/* 필터 */}
               <FilterBar
-                statusFilter={statusFilter}
                 priorityFilter={priorityFilter}
                 sortBy={sortBy}
                 sortOrder={sortOrder}
-                onStatusFilterChange={(v) => handleFilterChange(v)}
-                onPriorityFilterChange={(v) => handleFilterChange(undefined, v)}
-                onSortChange={(v) => handleFilterChange(undefined, undefined, v)}
-                onSortOrderChange={(v) => handleFilterChange(undefined, undefined, undefined, v)}
+                onPriorityFilterChange={(v) => handleFilterChange(v)}
+                onSortChange={(v) => handleFilterChange(undefined, v)}
+                onSortOrderChange={(v) => handleFilterChange(undefined, undefined, v)}
               />
 
               {/* 업무 목록 */}
@@ -576,10 +633,12 @@ export default function Home() {
       {(showForm || editingTask) && (
         <TaskForm
           task={editingTask}
+          defaultDate={selectedDate || undefined}
           onSubmit={handleSubmitTask}
           onClose={() => {
             setShowForm(false);
             setEditingTask(null);
+            setSelectedDate(null);
           }}
         />
       )}
@@ -598,8 +657,15 @@ export default function Home() {
         />
       )}
 
+      {/* 메모 플로팅 버튼 */}
+      <MemoButton
+        onSave={handleSaveMemo}
+        recentMemos={memos}
+        onDeleteMemo={handleDeleteMemo}
+      />
+
       {/* 토스트 알림 */}
-      <div className="fixed bottom-4 right-4 space-y-2 z-50">
+      <div className="fixed bottom-4 right-24 space-y-2 z-50">
         {toasts.map((toast: ToastData) => (
           <Toast
             key={toast.id}

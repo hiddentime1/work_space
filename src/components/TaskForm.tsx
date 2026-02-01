@@ -6,6 +6,7 @@ import { X } from 'lucide-react';
 
 interface TaskFormProps {
   task?: Task | null;
+  defaultDate?: string;
   onSubmit: (data: CreateTaskInput | UpdateTaskInput) => void;
   onClose: () => void;
 }
@@ -23,13 +24,13 @@ const getTodayString = () => {
   return today.toISOString().split('T')[0];
 };
 
-export default function TaskForm({ task, onSubmit, onClose }: TaskFormProps) {
+export default function TaskForm({ task, defaultDate, onSubmit, onClose }: TaskFormProps) {
   const [title, setTitle] = useState(task?.title || '');
   const [description, setDescription] = useState(task?.description || '');
   const [priority, setPriority] = useState<Priority>(task?.priority || 'medium');
-  // 새 업무는 기본값 오늘, 수정 시에는 기존 날짜 유지
+  // 우선순위: 수정 시 기존 날짜 > defaultDate > 오늘
   const [dueDate, setDueDate] = useState(
-    task?.due_date ? task.due_date.split('T')[0] : getTodayString()
+    task?.due_date ? task.due_date.split('T')[0] : (defaultDate || getTodayString())
   );
   const [category, setCategory] = useState(task?.category || '');
 

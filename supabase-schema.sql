@@ -39,6 +39,24 @@ CREATE TABLE IF NOT EXISTS notification_logs (
   error_message TEXT
 );
 
+-- 메모 테이블
+CREATE TABLE IF NOT EXISTS memos (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Memos 테이블 트리거
+DROP TRIGGER IF EXISTS update_memos_updated_at ON memos;
+CREATE TRIGGER update_memos_updated_at
+  BEFORE UPDATE ON memos
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- 메모 인덱스
+CREATE INDEX IF NOT EXISTS idx_memos_created_at ON memos(created_at DESC);
+
 -- updated_at 자동 업데이트 함수
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$

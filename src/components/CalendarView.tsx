@@ -7,17 +7,20 @@ import {
   ChevronRight, 
   Check,
   GripVertical,
-  ArrowRight
+  ArrowRight,
+  Plus,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { 
   format, 
   startOfWeek, 
   addDays, 
-  isSameDay,
   isToday,
   isPast,
   addWeeks,
-  subWeeks
+  subWeeks,
+  isWeekend
 } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -26,23 +29,31 @@ interface CalendarViewProps {
   onToggleComplete: (task: Task) => void;
   onMoveTask: (taskId: string, newDate: string) => void;
   onEditTask: (task: Task) => void;
+  onAddTask: (date: string) => void;
 }
 
 export default function CalendarView({ 
   tasks, 
   onToggleComplete, 
   onMoveTask,
-  onEditTask 
+  onEditTask,
+  onAddTask
 }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
+  const [showWeekend, setShowWeekend] = useState(false);
 
   // 주간 날짜 배열 생성 (월요일 시작)
   const weekDays = useMemo(() => {
     const start = startOfWeek(currentDate, { weekStartsOn: 1 });
-    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
-  }, [currentDate]);
+    const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+    // 주말 숨김 처리
+    if (!showWeekend) {
+      return days.filter(day => !isWeekend(day));
+    }
+    return days;
+  }, [currentDate, showWeekend]);
 
   // 날짜별 태스크 그룹화
   const tasksByDate = useMemo(() => {
@@ -115,6 +126,8 @@ export default function CalendarView({
     return { completed, total };
   };
 
+  const gridCols = showWeekend ? 'grid-cols-7' : 'grid-cols-5';
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       {/* 헤더 */}
@@ -136,16 +149,27 @@ export default function CalendarView({
             {format(weekDays[0], 'yyyy년 M월', { locale: ko })}
           </span>
         </div>
-        <button
-          onClick={goToToday}
-          className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          오늘
-        </button>
+        <div className="flex items-center gap-2">
+          {/* 주말 토글 */}
+          <button
+            onClick={() => setShowWeekend(!showWeekend)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors
+                       ${showWeekend ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+          >
+            {showWeekend ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            주말
+          </button>
+          <button
+            onClick={goToToday}
+            className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            오늘
+          </button>
+        </div>
       </div>
 
       {/* 캘린더 그리드 */}
-      <div className="grid grid-cols-7 divide-x divide-gray-100">
+      <div className={`grid ${gridCols} divide-x divide-gray-100`}>
         {weekDays.map(day => {
           const dateStr = format(day, 'yyyy-MM-dd');
           const dayTasks = tasksByDate[dateStr] || [];
@@ -153,21 +177,23 @@ export default function CalendarView({
           const isCurrentDay = isToday(day);
           const isPastDay = isPast(day) && !isCurrentDay;
           const isDragOver = dragOverDate === dateStr;
+          const isWeekendDay = isWeekend(day);
 
           return (
             <div
               key={dateStr}
               className={`min-h-[200px] flex flex-col transition-colors
                          ${isDragOver ? 'bg-gray-50' : ''}
-                         ${isPastDay ? 'bg-gray-50/50' : ''}`}
+                         ${isPastDay ? 'bg-gray-50/50' : ''}
+                         ${isWeekendDay ? 'bg-gray-50/30' : ''}`}
               onDragOver={(e) => handleDragOver(e, dateStr)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, dateStr)}
             >
               {/* 날짜 헤더 */}
-              <div className={`p-2 text-center border-b border-gray-100
+              <div className={`p-2 text-center border-b border-gray-100 relative group
                               ${isCurrentDay ? 'bg-gray-900' : ''}`}>
-                <div className={`text-xs ${isCurrentDay ? 'text-gray-300' : 'text-gray-500'}`}>
+                <div className={`text-xs ${isCurrentDay ? 'text-gray-300' : isWeekendDay ? 'text-gray-400' : 'text-gray-500'}`}>
                   {format(day, 'EEE', { locale: ko })}
                 </div>
                 <div className={`text-lg font-semibold 
@@ -179,6 +205,14 @@ export default function CalendarView({
                     {stats.completed}/{stats.total}
                   </div>
                 )}
+                {/* 추가 버튼 */}
+                <button
+                  onClick={() => onAddTask(dateStr)}
+                  className={`absolute top-1 right-1 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity
+                             ${isCurrentDay ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-200 text-gray-500'}`}
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
               </div>
 
               {/* 태스크 목록 */}
@@ -230,8 +264,17 @@ export default function CalendarView({
                 ))}
                 
                 {dayTasks.length === 0 && (
-                  <div className="h-full flex items-center justify-center text-gray-300 text-xs">
-                    {isDragOver ? '여기에 놓기' : ''}
+                  <div className="h-full flex items-center justify-center">
+                    {isDragOver ? (
+                      <span className="text-gray-400 text-xs">여기에 놓기</span>
+                    ) : (
+                      <button
+                        onClick={() => onAddTask(dateStr)}
+                        className="p-2 text-gray-300 hover:text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <Plus className="w-5 h-5" />
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
