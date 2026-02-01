@@ -176,11 +176,11 @@ export default function MemosPage() {
       {/* 메모 수정 모달 */}
       {editingMemo && (
         <div 
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50"
           onClick={handleCloseModal}
         >
           <div 
-            className="bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4"
+            className="bg-white rounded-t-2xl sm:rounded-xl shadow-xl w-full sm:max-w-2xl sm:mx-4 max-h-[90vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
             onKeyDown={handleKeyDown}
           >
@@ -199,32 +199,32 @@ export default function MemosPage() {
             </div>
 
             {/* 메모 수정 */}
-            <div className="p-5">
+            <div className="p-4 sm:p-5">
               <textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 placeholder="메모를 입력하세요..."
-                rows={12}
+                rows={10}
                 autoFocus
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg 
                            text-gray-800 placeholder:text-gray-400 resize-none
                            focus:outline-none focus:ring-2 focus:ring-gray-400"
               />
-              <div className="flex items-center justify-between mt-4">
-                <span className="text-sm text-gray-400">
+              <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-4">
+                <span className="hidden sm:block text-sm text-gray-400">
                   Ctrl+Enter로 저장
                 </span>
                 <div className="flex gap-2">
                   <button
                     onClick={handleCloseModal}
-                    className="btn-secondary"
+                    className="btn-secondary flex-1 sm:flex-none"
                   >
                     취소
                   </button>
                   <button
                     onClick={handleUpdate}
                     disabled={!editContent.trim()}
-                    className="btn-primary flex items-center gap-2 disabled:opacity-50"
+                    className="btn-primary flex-1 sm:flex-none flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     <Save className="w-4 h-4" />
                     수정

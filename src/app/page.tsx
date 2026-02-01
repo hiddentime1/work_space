@@ -12,7 +12,8 @@ import OverdueTasksModal from '@/components/OverdueTasksModal';
 import BulkActionBar from '@/components/BulkActionBar';
 import MemoButton from '@/components/MemoButton';
 import Toast, { useToast, ToastData } from '@/components/Toast';
-import { Plus, Bell, RefreshCw, ListTodo, Calendar, List } from 'lucide-react';
+import { Plus, Bell, RefreshCw, ListTodo, Calendar, List, StickyNote } from 'lucide-react';
+import Link from 'next/link';
 import { isToday, startOfDay, addDays } from 'date-fns';
 
 type ViewMode = 'list' | 'calendar';
@@ -444,8 +445,17 @@ export default function Home() {
             </div>
             
             <div className="flex items-center gap-2">
+              {/* 메모 페이지 */}
+              <Link
+                href="/memos"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="메모 목록"
+              >
+                <StickyNote className="w-5 h-5 text-gray-500" />
+              </Link>
+              
               {/* 뷰 모드 전환 */}
-              <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <div className="hidden sm:flex items-center bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode('list')}
                   className={`p-1.5 rounded transition-colors ${

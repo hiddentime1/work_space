@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Task } from '@/types';
 import { 
   ChevronLeft, 
@@ -20,7 +20,8 @@ import {
   isPast,
   addWeeks,
   subWeeks,
-  isWeekend
+  isWeekend,
+  subDays
 } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -43,6 +44,17 @@ export default function CalendarView({
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
   const [showWeekend, setShowWeekend] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // 모바일 감지
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // 주간 날짜 배열 생성 (월요일 시작)
   const weekDays = useMemo(() => {
@@ -55,23 +67,39 @@ export default function CalendarView({
     return days;
   }, [currentDate, showWeekend]);
 
-  // 날짜별 태스크 그룹화
+  // 날짜별 태스크 그룹화 (모바일: 현재 날짜만, 데스크탑: 주간)
   const tasksByDate = useMemo(() => {
     const grouped: Record<string, Task[]> = {};
     
-    weekDays.forEach(day => {
-      const dateStr = format(day, 'yyyy-MM-dd');
+    if (isMobile) {
+      // 모바일: 현재 선택된 날짜만
+      const dateStr = format(currentDate, 'yyyy-MM-dd');
       grouped[dateStr] = [];
-    });
-    
-    tasks.forEach(task => {
-      if (task.due_date) {
-        const taskDate = task.due_date.split('T')[0];
-        if (grouped[taskDate]) {
-          grouped[taskDate].push(task);
+      
+      tasks.forEach(task => {
+        if (task.due_date) {
+          const taskDate = task.due_date.split('T')[0];
+          if (taskDate === dateStr) {
+            grouped[dateStr].push(task);
+          }
         }
-      }
-    });
+      });
+    } else {
+      // 데스크탑: 주간
+      weekDays.forEach(day => {
+        const dateStr = format(day, 'yyyy-MM-dd');
+        grouped[dateStr] = [];
+      });
+      
+      tasks.forEach(task => {
+        if (task.due_date) {
+          const taskDate = task.due_date.split('T')[0];
+          if (grouped[taskDate]) {
+            grouped[taskDate].push(task);
+          }
+        }
+      });
+    }
     
     // 우선순위로 정렬
     Object.keys(grouped).forEach(date => {
@@ -82,11 +110,25 @@ export default function CalendarView({
     });
     
     return grouped;
-  }, [tasks, weekDays]);
+  }, [tasks, weekDays, currentDate, isMobile]);
 
-  // 이전/다음 주
-  const goToPrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
-  const goToNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
+  // 이전/다음 (모바일: 일, 데스크탑: 주)
+  const goToPrev = () => {
+    if (isMobile) {
+      setCurrentDate(subDays(currentDate, 1));
+    } else {
+      setCurrentDate(subWeeks(currentDate, 1));
+    }
+  };
+  
+  const goToNext = () => {
+    if (isMobile) {
+      setCurrentDate(addDays(currentDate, 1));
+    } else {
+      setCurrentDate(addWeeks(currentDate, 1));
+    }
+  };
+  
   const goToToday = () => setCurrentDate(new Date());
 
   // 드래그 핸들러
@@ -128,19 +170,149 @@ export default function CalendarView({
 
   const gridCols = showWeekend ? 'grid-cols-7' : 'grid-cols-5';
 
+  // 모바일 뷰
+  if (isMobile) {
+    const dateStr = format(currentDate, 'yyyy-MM-dd');
+    const dayTasks = tasksByDate[dateStr] || [];
+    const stats = getDateStats(dateStr);
+    const isCurrentDay = isToday(currentDate);
+
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        {/* 모바일 헤더 */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+          <button
+            onClick={goToPrev}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <ChevronLeft className="w-6 h-6 text-gray-600" />
+          </button>
+          
+          <div className="text-center">
+            <div className="text-sm text-gray-500">
+              {format(currentDate, 'yyyy년 M월', { locale: ko })}
+            </div>
+            <div className={`text-2xl font-bold ${isCurrentDay ? 'text-gray-900' : 'text-gray-800'}`}>
+              {format(currentDate, 'd일 (EEE)', { locale: ko })}
+            </div>
+            {stats.total > 0 && (
+              <div className="text-xs text-gray-400 mt-0.5">
+                {stats.completed}/{stats.total} 완료
+              </div>
+            )}
+          </div>
+          
+          <button
+            onClick={goToNext}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <ChevronRight className="w-6 h-6 text-gray-600" />
+          </button>
+        </div>
+
+        {/* 오늘 버튼 */}
+        {!isCurrentDay && (
+          <div className="px-4 py-2 border-b border-gray-100">
+            <button
+              onClick={goToToday}
+              className="w-full py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              오늘로 이동
+            </button>
+          </div>
+        )}
+
+        {/* 태스크 목록 */}
+        <div className="p-4 space-y-2 min-h-[200px]">
+          {dayTasks.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+              <Plus className="w-8 h-8 mb-2" />
+              <p className="text-sm">업무가 없습니다</p>
+              <button
+                onClick={() => onAddTask(dateStr)}
+                className="mt-3 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg"
+              >
+                업무 추가
+              </button>
+            </div>
+          ) : (
+            dayTasks.map(task => (
+              <div
+                key={task.id}
+                onClick={() => onEditTask(task)}
+                className={`p-4 rounded-xl transition-all active:scale-[0.98]
+                           ${task.status === 'completed' 
+                             ? 'bg-gray-100 text-gray-400' 
+                             : 'bg-white border border-gray-200 text-gray-700'}`}
+              >
+                <div className="flex items-start gap-3">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleComplete(task);
+                    }}
+                    className={`w-6 h-6 rounded-full border-2 flex-shrink-0
+                               flex items-center justify-center mt-0.5
+                               ${task.status === 'completed'
+                                 ? 'bg-gray-400 border-gray-400'
+                                 : 'border-gray-300'}`}
+                  >
+                    {task.status === 'completed' && (
+                      <Check className="w-4 h-4 text-white" />
+                    )}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-medium ${task.status === 'completed' ? 'line-through' : ''}`}>
+                      {task.title}
+                    </p>
+                    {task.description && (
+                      <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                        {task.description}
+                      </p>
+                    )}
+                    {(task.priority === 'urgent' || task.priority === 'high') && (
+                      <span className={`inline-block mt-2 px-2 py-0.5 rounded text-xs font-medium
+                                      ${task.priority === 'urgent' ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                        {task.priority === 'urgent' ? '긴급' : '높음'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* 하단 추가 버튼 */}
+        {dayTasks.length > 0 && (
+          <div className="p-4 border-t border-gray-100">
+            <button
+              onClick={() => onAddTask(dateStr)}
+              className="w-full py-3 flex items-center justify-center gap-2 text-gray-500 hover:bg-gray-100 rounded-xl transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              <span className="font-medium">업무 추가</span>
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 데스크탑 뷰
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       {/* 헤더 */}
       <div className="flex items-center justify-between p-4 border-b border-gray-100">
         <div className="flex items-center gap-2">
           <button
-            onClick={goToPrevWeek}
+            onClick={goToPrev}
             className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ChevronLeft className="w-5 h-5 text-gray-600" />
           </button>
           <button
-            onClick={goToNextWeek}
+            onClick={goToNext}
             className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ChevronRight className="w-5 h-5 text-gray-600" />
