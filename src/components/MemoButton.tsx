@@ -1,30 +1,55 @@
 'use client';
 
 import { useState } from 'react';
-import { StickyNote, X, Save, Trash2 } from 'lucide-react';
+import { StickyNote, X, Save } from 'lucide-react';
 import { Memo } from '@/types';
 
 interface MemoButtonProps {
   onSave: (content: string) => void;
-  recentMemos: Memo[];
-  onDeleteMemo: (id: string) => void;
+  onUpdate?: (id: string, content: string) => void;
+  editingMemo?: Memo | null;
+  onClearEditing?: () => void;
 }
 
-export default function MemoButton({ onSave, recentMemos, onDeleteMemo }: MemoButtonProps) {
+export default function MemoButton({ onSave, onUpdate, editingMemo, onClearEditing }: MemoButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [content, setContent] = useState('');
-  const [showRecent, setShowRecent] = useState(false);
+
+  // 외부에서 editingMemo가 설정되면 모달 열기
+  const isEditing = !!editingMemo;
+  const modalOpen = isOpen || isEditing;
+  const currentContent = isEditing ? (editingMemo?.content || '') : content;
 
   const handleSave = () => {
-    if (!content.trim()) return;
-    onSave(content.trim());
-    setContent('');
+    const trimmed = isEditing ? (editingMemo?.content || '').trim() : content.trim();
+    if (!trimmed && !isEditing) return;
+    
+    if (isEditing && editingMemo && onUpdate) {
+      // 수정 모드
+      const textArea = document.getElementById('memo-textarea') as HTMLTextAreaElement;
+      const newContent = textArea?.value.trim();
+      if (newContent) {
+        onUpdate(editingMemo.id, newContent);
+      }
+    } else {
+      // 새 메모
+      onSave(content.trim());
+      setContent('');
+    }
+    handleClose();
+  };
+
+  const handleClose = () => {
     setIsOpen(false);
+    setContent('');
+    if (onClearEditing) {
+      onClearEditing();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
-      setIsOpen(false);
+      handleClose();
     }
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       handleSave();
@@ -45,13 +70,13 @@ export default function MemoButton({ onSave, recentMemos, onDeleteMemo }: MemoBu
       </button>
 
       {/* 메모 모달 */}
-      {isOpen && (
+      {modalOpen && (
         <div 
           className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-          onClick={() => setIsOpen(false)}
+          onClick={handleClose}
         >
           <div 
-            className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4"
+            className="bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4"
             onClick={e => e.stopPropagation()}
             onKeyDown={handleKeyDown}
           >
@@ -59,94 +84,52 @@ export default function MemoButton({ onSave, recentMemos, onDeleteMemo }: MemoBu
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
               <div className="flex items-center gap-2">
                 <StickyNote className="w-5 h-5 text-gray-600" />
-                <h2 className="font-bold text-gray-900">메모</h2>
+                <h2 className="font-bold text-gray-900">
+                  {isEditing ? '메모 수정' : '새 메모'}
+                </h2>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowRecent(!showRecent)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors
-                             ${showRecent ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
-                >
-                  최근 메모
-                </button>
-                <button 
-                  onClick={() => setIsOpen(false)}
-                  className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-400" />
-                </button>
-              </div>
+              <button 
+                onClick={handleClose}
+                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
             </div>
 
-            {showRecent ? (
-              /* 최근 메모 목록 */
-              <div className="p-4 max-h-[400px] overflow-y-auto">
-                {recentMemos.length === 0 ? (
-                  <p className="text-center text-gray-400 text-sm py-8">
-                    저장된 메모가 없습니다
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {recentMemos.slice(0, 5).map(memo => (
-                      <div 
-                        key={memo.id}
-                        className="p-3 bg-gray-50 rounded-lg group"
-                      >
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap line-clamp-3">
-                          {memo.content}
-                        </p>
-                        <div className="flex items-center justify-between mt-2">
-                          <span className="text-xs text-gray-400">
-                            {new Date(memo.created_at).toLocaleDateString('ko-KR')}
-                          </span>
-                          <button
-                            onClick={() => onDeleteMemo(memo.id)}
-                            className="p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {recentMemos.length > 5 && (
-                      <a
-                        href="/memos"
-                        className="block text-center text-sm text-gray-500 hover:text-gray-700 py-2"
-                      >
-                        전체 메모 보기 ({recentMemos.length}개)
-                      </a>
-                    )}
-                  </div>
-                )}
-              </div>
-            ) : (
-              /* 메모 작성 */
-              <div className="p-4">
-                <textarea
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  placeholder="메모를 입력하세요..."
-                  rows={6}
-                  autoFocus
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg 
-                             text-gray-800 text-sm placeholder:text-gray-400 resize-none
-                             focus:outline-none focus:ring-2 focus:ring-gray-400"
-                />
-                <div className="flex items-center justify-between mt-3">
-                  <span className="text-xs text-gray-400">
-                    Ctrl+Enter로 저장
-                  </span>
+            {/* 메모 작성/수정 */}
+            <div className="p-5">
+              <textarea
+                id="memo-textarea"
+                defaultValue={currentContent}
+                onChange={(e) => !isEditing && setContent(e.target.value)}
+                placeholder="메모를 입력하세요..."
+                rows={12}
+                autoFocus
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg 
+                           text-gray-800 placeholder:text-gray-400 resize-none
+                           focus:outline-none focus:ring-2 focus:ring-gray-400"
+              />
+              <div className="flex items-center justify-between mt-4">
+                <span className="text-sm text-gray-400">
+                  Ctrl+Enter로 저장
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleClose}
+                    className="btn-secondary"
+                  >
+                    취소
+                  </button>
                   <button
                     onClick={handleSave}
-                    disabled={!content.trim()}
-                    className="btn-primary flex items-center gap-2 disabled:opacity-50"
+                    className="btn-primary flex items-center gap-2"
                   >
                     <Save className="w-4 h-4" />
-                    저장
+                    {isEditing ? '수정' : '저장'}
                   </button>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}

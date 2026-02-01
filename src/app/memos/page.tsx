@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { Memo } from '@/types';
-import { ArrowLeft, Trash2, StickyNote, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Trash2, StickyNote, RefreshCw, Edit2, X, Save } from 'lucide-react';
 import Link from 'next/link';
 
 export default function MemosPage() {
   const [memos, setMemos] = useState<Memo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [editingMemo, setEditingMemo] = useState<Memo | null>(null);
+  const [editContent, setEditContent] = useState('');
 
   const fetchMemos = async () => {
     try {
@@ -41,6 +43,48 @@ export default function MemosPage() {
     }
   };
 
+  const handleEdit = (memo: Memo) => {
+    setEditingMemo(memo);
+    setEditContent(memo.content);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingMemo || !editContent.trim()) return;
+    
+    try {
+      const res = await fetch(`/api/memos/${editingMemo.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: editContent.trim() }),
+      });
+      const result = await res.json();
+      
+      if (result.success) {
+        setMemos(memos.map(m => 
+          m.id === editingMemo.id ? { ...m, content: editContent.trim() } : m
+        ));
+        setEditingMemo(null);
+        setEditContent('');
+      }
+    } catch (error) {
+      console.error('메모 수정 실패:', error);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setEditingMemo(null);
+    setEditContent('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      handleCloseModal();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      handleUpdate();
+    }
+  };
+
   return (
     <main className="min-h-screen bg-gray-50 pb-20">
       {/* 헤더 */}
@@ -56,6 +100,9 @@ export default function MemosPage() {
             <div className="flex items-center gap-2">
               <StickyNote className="w-5 h-5 text-gray-600" />
               <h1 className="text-lg font-bold text-gray-900">메모 목록</h1>
+              {memos.length > 0 && (
+                <span className="text-sm text-gray-400">({memos.length}개)</span>
+              )}
             </div>
           </div>
         </div>
@@ -82,7 +129,9 @@ export default function MemosPage() {
             {memos.map(memo => (
               <div 
                 key={memo.id}
-                className="bg-white rounded-xl p-4 border border-gray-200 group"
+                className="bg-white rounded-xl p-4 border border-gray-200 group cursor-pointer
+                           hover:border-gray-300 hover:shadow-sm transition-all"
+                onClick={() => handleEdit(memo)}
               >
                 <p className="text-gray-800 whitespace-pre-wrap">
                   {memo.content}
@@ -97,19 +146,95 @@ export default function MemosPage() {
                       minute: '2-digit'
                     })}
                   </span>
-                  <button
-                    onClick={() => handleDelete(memo.id)}
-                    className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 
-                               rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(memo);
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(memo.id);
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* 메모 수정 모달 */}
+      {editingMemo && (
+        <div 
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          onClick={handleCloseModal}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4"
+            onClick={e => e.stopPropagation()}
+            onKeyDown={handleKeyDown}
+          >
+            {/* 헤더 */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <StickyNote className="w-5 h-5 text-gray-600" />
+                <h2 className="font-bold text-gray-900">메모 수정</h2>
+              </div>
+              <button 
+                onClick={handleCloseModal}
+                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+
+            {/* 메모 수정 */}
+            <div className="p-5">
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                placeholder="메모를 입력하세요..."
+                rows={12}
+                autoFocus
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg 
+                           text-gray-800 placeholder:text-gray-400 resize-none
+                           focus:outline-none focus:ring-2 focus:ring-gray-400"
+              />
+              <div className="flex items-center justify-between mt-4">
+                <span className="text-sm text-gray-400">
+                  Ctrl+Enter로 저장
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCloseModal}
+                    className="btn-secondary"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleUpdate}
+                    disabled={!editContent.trim()}
+                    className="btn-primary flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" />
+                    수정
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

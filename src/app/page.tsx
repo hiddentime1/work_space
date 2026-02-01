@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Task, CreateTaskInput, UpdateTaskInput, DashboardStats, Priority, Memo } from '@/types';
+import { Task, CreateTaskInput, UpdateTaskInput, DashboardStats, Priority } from '@/types';
 import Dashboard from '@/components/Dashboard';
 import TaskCard from '@/components/TaskCard';
 import TaskForm from '@/components/TaskForm';
@@ -20,7 +20,6 @@ type ViewMode = 'list' | 'calendar';
 export default function Home() {
   // 상태 관리
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [memos, setMemos] = useState<Memo[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     total: 0, pending: 0, in_progress: 0, completed: 0, 
     overdue: 0, completedToday: 0, dueToday: 0
@@ -106,18 +105,6 @@ export default function Home() {
     }
   };
 
-  const fetchMemos = async () => {
-    try {
-      const res = await fetch('/api/memos');
-      const data = await res.json();
-      if (data.success) {
-        setMemos(data.data);
-      }
-    } catch (error) {
-      console.error('메모 로드 실패:', error);
-    }
-  };
-
   const fetchNotificationSettings = async () => {
     try {
       const res = await fetch('/api/notification/settings');
@@ -141,7 +128,6 @@ export default function Home() {
       await Promise.all([
         fetchTasks(priorityFilter, sortBy, sortOrder),
         fetchStats(),
-        fetchMemos(),
         fetchNotificationSettings()
       ]);
       setIsLoading(false);
@@ -374,27 +360,11 @@ export default function Home() {
       
       if (result.success) {
         showToast('메모가 저장되었습니다.', 'success');
-        fetchMemos();
       } else {
         showToast(result.error || '메모 저장에 실패했습니다.', 'error');
       }
     } catch (error) {
       showToast('메모 저장에 실패했습니다.', 'error');
-    }
-  };
-
-  // 메모 삭제
-  const handleDeleteMemo = async (id: string) => {
-    try {
-      const res = await fetch(`/api/memos/${id}`, { method: 'DELETE' });
-      const result = await res.json();
-      
-      if (result.success) {
-        setMemos(memos.filter(m => m.id !== id));
-        showToast('메모가 삭제되었습니다.', 'info');
-      }
-    } catch (error) {
-      showToast('메모 삭제에 실패했습니다.', 'error');
     }
   };
 
@@ -660,8 +630,6 @@ export default function Home() {
       {/* 메모 플로팅 버튼 */}
       <MemoButton
         onSave={handleSaveMemo}
-        recentMemos={memos}
-        onDeleteMemo={handleDeleteMemo}
       />
 
       {/* 토스트 알림 */}
