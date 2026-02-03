@@ -295,25 +295,34 @@ export default function Home() {
 
   // 오늘로 이관
   const handleMoveToToday = async (taskId: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    await handleMoveTask(taskId, today);
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    await handleMoveTask(taskId, todayStr);
   };
 
   // 전체 오늘로 이관
   const handleMoveAllToToday = async () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}T00:00:00.000Z`;
     
     try {
-      await Promise.all(
-        overdueTasks.map(task => 
-          fetch(`/api/tasks/${task.id}`, {
+      const results = await Promise.all(
+        overdueTasks.map(async task => {
+          const res = await fetch(`/api/tasks/${task.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ due_date: new Date(today).toISOString() }),
-          })
-        )
+            body: JSON.stringify({ due_date: todayStr }),
+          });
+          return res.ok;
+        })
       );
-      showToast(`${overdueTasks.length}개 업무가 오늘로 이관되었습니다.`, 'success');
+      
+      const successCount = results.filter(Boolean).length;
+      if (successCount > 0) {
+        showToast(`${successCount}개 업무가 오늘로 이관되었습니다.`, 'success');
+      } else {
+        showToast('이관에 실패했습니다.', 'error');
+      }
       setShowOverdueModal(false);
       refreshData();
     } catch (error) {
@@ -323,8 +332,6 @@ export default function Home() {
 
   // 오늘 미완료 업무 내일로 이관
   const handleMoveIncompleteTodayToTomorrow = async () => {
-    const tomorrow = addDays(new Date(), 1).toISOString().split('T')[0];
-    
     if (incompleteTodayTasks.length === 0) {
       showToast('이관할 업무가 없습니다.', 'info');
       return;
@@ -332,17 +339,30 @@ export default function Home() {
 
     if (!confirm(`${incompleteTodayTasks.length}개의 미완료 업무를 내일로 이관하시겠습니까?`)) return;
     
+    // 내일 날짜 계산 (로컬 타임존 기준)
+    const tomorrow = addDays(new Date(), 1);
+    const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}T00:00:00.000Z`;
+    
     try {
-      await Promise.all(
-        incompleteTodayTasks.map(task => 
-          fetch(`/api/tasks/${task.id}`, {
+      const results = await Promise.all(
+        incompleteTodayTasks.map(async task => {
+          const res = await fetch(`/api/tasks/${task.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ due_date: new Date(tomorrow).toISOString() }),
-          })
-        )
+            body: JSON.stringify({ due_date: tomorrowStr }),
+          });
+          return res.ok;
+        })
       );
-      showToast(`${incompleteTodayTasks.length}개 업무가 내일로 이관되었습니다.`, 'success');
+      
+      const successCount = results.filter(Boolean).length;
+      if (successCount === incompleteTodayTasks.length) {
+        showToast(`${successCount}개 업무가 내일로 이관되었습니다.`, 'success');
+      } else if (successCount > 0) {
+        showToast(`${successCount}/${incompleteTodayTasks.length}개 업무가 이관되었습니다.`, 'info');
+      } else {
+        showToast('이관에 실패했습니다.', 'error');
+      }
       refreshData();
     } catch (error) {
       showToast('이관에 실패했습니다.', 'error');
@@ -516,6 +536,7 @@ export default function Home() {
               onMoveTask={handleMoveTask}
               onEditTask={setEditingTask}
               onAddTask={handleAddTaskOnDate}
+              onDeleteTask={handleDeleteTask}
             />
           </div>
         ) : (

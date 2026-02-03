@@ -10,7 +10,8 @@ import {
   ArrowRight,
   Plus,
   Eye,
-  EyeOff
+  EyeOff,
+  Trash2
 } from 'lucide-react';
 import { 
   format, 
@@ -31,14 +32,45 @@ interface CalendarViewProps {
   onMoveTask: (taskId: string, newDate: string) => void;
   onEditTask: (task: Task) => void;
   onAddTask: (date: string) => void;
+  onDeleteTask: (taskId: string) => void;
 }
+
+// 우선순위별 색상
+const getPriorityColor = (priority: string, isCompleted: boolean) => {
+  if (isCompleted) return 'bg-gray-100 text-gray-400';
+  
+  switch (priority) {
+    case 'urgent':
+      return 'bg-red-50 border-red-200 text-gray-700';
+    case 'high':
+      return 'bg-orange-50 border-orange-200 text-gray-700';
+    case 'medium':
+      return 'bg-white border-gray-200 text-gray-700';
+    case 'low':
+      return 'bg-gray-50 border-gray-200 text-gray-600';
+    default:
+      return 'bg-white border-gray-200 text-gray-700';
+  }
+};
+
+const getPriorityBadgeColor = (priority: string) => {
+  switch (priority) {
+    case 'urgent':
+      return 'bg-red-500 text-white';
+    case 'high':
+      return 'bg-orange-500 text-white';
+    default:
+      return 'bg-gray-200 text-gray-700';
+  }
+};
 
 export default function CalendarView({ 
   tasks, 
   onToggleComplete, 
   onMoveTask,
   onEditTask,
-  onAddTask
+  onAddTask,
+  onDeleteTask
 }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
@@ -240,10 +272,8 @@ export default function CalendarView({
               <div
                 key={task.id}
                 onClick={() => onEditTask(task)}
-                className={`p-4 rounded-xl transition-all active:scale-[0.98]
-                           ${task.status === 'completed' 
-                             ? 'bg-gray-100 text-gray-400' 
-                             : 'bg-white border border-gray-200 text-gray-700'}`}
+                className={`p-4 rounded-xl transition-all active:scale-[0.98] border
+                           ${getPriorityColor(task.priority, task.status === 'completed')}`}
               >
                 <div className="flex items-start gap-3">
                   <button
@@ -255,7 +285,11 @@ export default function CalendarView({
                                flex items-center justify-center mt-0.5
                                ${task.status === 'completed'
                                  ? 'bg-gray-400 border-gray-400'
-                                 : 'border-gray-300'}`}
+                                 : task.priority === 'urgent'
+                                   ? 'border-red-400'
+                                   : task.priority === 'high'
+                                     ? 'border-orange-400'
+                                     : 'border-gray-300'}`}
                   >
                     {task.status === 'completed' && (
                       <Check className="w-4 h-4 text-white" />
@@ -272,11 +306,23 @@ export default function CalendarView({
                     )}
                     {(task.priority === 'urgent' || task.priority === 'high') && (
                       <span className={`inline-block mt-2 px-2 py-0.5 rounded text-xs font-medium
-                                      ${task.priority === 'urgent' ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                                      ${getPriorityBadgeColor(task.priority)}`}>
                         {task.priority === 'urgent' ? '긴급' : '높음'}
                       </span>
                     )}
                   </div>
+                  {/* 삭제 버튼 */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm('이 업무를 삭제하시겠습니까?')) {
+                        onDeleteTask(task.id);
+                      }
+                    }}
+                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
             ))
@@ -397,10 +443,14 @@ export default function CalendarView({
                     onDragEnd={handleDragEnd}
                     onClick={() => onEditTask(task)}
                     className={`group p-2 rounded-lg text-xs cursor-move
-                               transition-all hover:shadow-md
+                               transition-all hover:shadow-md border
                                ${task.status === 'completed' 
-                                 ? 'bg-gray-100 text-gray-400 line-through' 
-                                 : 'bg-white border border-gray-200 text-gray-700 hover:border-gray-300'}
+                                 ? 'bg-gray-100 text-gray-400 line-through border-gray-100' 
+                                 : task.priority === 'urgent'
+                                   ? 'bg-red-50 border-red-200 text-gray-700 hover:border-red-300'
+                                   : task.priority === 'high'
+                                     ? 'bg-orange-50 border-orange-200 text-gray-700 hover:border-orange-300'
+                                     : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'}
                                ${draggedTask?.id === task.id ? 'opacity-50' : ''}`}
                   >
                     <div className="flex items-start gap-1">
@@ -416,7 +466,11 @@ export default function CalendarView({
                                        flex items-center justify-center
                                        ${task.status === 'completed'
                                          ? 'bg-gray-400 border-gray-400'
-                                         : 'border-gray-300 hover:border-gray-400'}`}
+                                         : task.priority === 'urgent'
+                                           ? 'border-red-400 hover:border-red-500'
+                                           : task.priority === 'high'
+                                             ? 'border-orange-400 hover:border-orange-500'
+                                             : 'border-gray-300 hover:border-gray-400'}`}
                           >
                             {task.status === 'completed' && (
                               <Check className="w-2.5 h-2.5 text-white" />
@@ -426,7 +480,7 @@ export default function CalendarView({
                         </div>
                         {task.priority === 'urgent' || task.priority === 'high' ? (
                           <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium
-                                          ${task.priority === 'urgent' ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                                          ${getPriorityBadgeColor(task.priority)}`}>
                             {task.priority === 'urgent' ? '긴급' : '높음'}
                           </span>
                         ) : null}
