@@ -57,6 +57,33 @@ CREATE TRIGGER update_memos_updated_at
 -- 메모 인덱스
 CREATE INDEX IF NOT EXISTS idx_memos_created_at ON memos(created_at DESC);
 
+-- 거래처 연락 테이블
+CREATE TABLE IF NOT EXISTS contacts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  company_name TEXT NOT NULL,
+  contact_date DATE NOT NULL,
+  content TEXT,
+  contact_person TEXT,
+  phone TEXT,
+  is_completed BOOLEAN DEFAULT FALSE,
+  priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  completed_at TIMESTAMPTZ
+);
+
+-- Contacts 테이블 트리거
+DROP TRIGGER IF EXISTS update_contacts_updated_at ON contacts;
+CREATE TRIGGER update_contacts_updated_at
+  BEFORE UPDATE ON contacts
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- Contacts 인덱스
+CREATE INDEX IF NOT EXISTS idx_contacts_contact_date ON contacts(contact_date);
+CREATE INDEX IF NOT EXISTS idx_contacts_is_completed ON contacts(is_completed);
+CREATE INDEX IF NOT EXISTS idx_contacts_created_at ON contacts(created_at DESC);
+
 -- updated_at 자동 업데이트 함수
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$

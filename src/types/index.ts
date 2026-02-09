@@ -100,3 +100,39 @@ export interface CreateMemoInput {
 export interface UpdateMemoInput {
   content?: string;
 }
+
+// 거래처 연락 인터페이스
+export interface Contact {
+  id: string;
+  company_name: string;
+  contact_date: string;
+  content?: string;
+  contact_person?: string;
+  phone?: string;
+  is_completed: boolean;
+  priority: Priority;
+  created_at: string;
+  updated_at: string;
+  completed_at?: string;
+}
+
+// 거래처 연락 생성 타입
+export interface CreateContactInput {
+  company_name: string;
+  contact_date: string;
+  content?: string;
+  contact_person?: string;
+  phone?: string;
+  priority?: Priority;
+}
+
+// 거래처 연락 수정 타입
+export interface UpdateContactInput {
+  company_name?: string;
+  contact_date?: string;
+  content?: string;
+  contact_person?: string;
+  phone?: string;
+  is_completed?: boolean;
+  priority?: Priority;
+}

@@ -11,8 +11,9 @@ import CalendarView from '@/components/CalendarView';
 import OverdueTasksModal from '@/components/OverdueTasksModal';
 import BulkActionBar from '@/components/BulkActionBar';
 import MemoButton from '@/components/MemoButton';
+import TodayContactsSidebar from '@/components/TodayContactsSidebar';
 import Toast, { useToast, ToastData } from '@/components/Toast';
-import { Plus, Bell, RefreshCw, ListTodo, Calendar, List, StickyNote } from 'lucide-react';
+import { Plus, Bell, RefreshCw, ListTodo, Calendar, List, StickyNote, Phone } from 'lucide-react';
 import Link from 'next/link';
 import { isToday, startOfDay, addDays } from 'date-fns';
 
@@ -465,6 +466,15 @@ export default function Home() {
             </div>
             
             <div className="flex items-center gap-2">
+              {/* 거래처 연락 페이지 */}
+              <Link
+                href="/contacts"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="거래처 연락"
+              >
+                <Phone className="w-5 h-5 text-gray-500" />
+              </Link>
+              
               {/* 메모 페이지 */}
               <Link
                 href="/memos"
@@ -662,6 +672,9 @@ export default function Home() {
       <MemoButton
         onSave={handleSaveMemo}
       />
+
+      {/* 오늘 연락할 업체 사이드바 */}
+      <TodayContactsSidebar />
 
       {/* 토스트 알림 */}
       <div className="fixed bottom-4 right-24 space-y-2 z-50">
