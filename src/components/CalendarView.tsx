@@ -400,7 +400,7 @@ export default function CalendarView({
           return (
             <div
               key={dateStr}
-              className={`min-h-[200px] flex flex-col transition-colors
+              className={`min-h-[150px] flex flex-col transition-colors
                          ${isDragOver ? 'bg-gray-50' : ''}
                          ${isPastDay ? 'bg-gray-50/50' : ''}
                          ${isWeekendDay ? 'bg-gray-50/30' : ''}`}
@@ -434,7 +434,7 @@ export default function CalendarView({
               </div>
 
               {/* 태스크 목록 */}
-              <div className="flex-1 p-1 space-y-1 overflow-y-auto max-h-[300px]">
+              <div className="flex-1 p-1 space-y-1">
                 {dayTasks.map(task => (
                   <div
                     key={task.id}
@@ -476,7 +476,18 @@ export default function CalendarView({
                               <Check className="w-2.5 h-2.5 text-white" />
                             )}
                           </button>
-                          <span className="truncate">{task.title}</span>
+                          <span className="truncate flex-1">{task.title}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm('이 업무를 삭제하시겠습니까?')) {
+                                onDeleteTask(task.id);
+                              }
+                            }}
+                            className="p-0.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
                         </div>
                         {task.priority === 'urgent' || task.priority === 'high' ? (
                           <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium
