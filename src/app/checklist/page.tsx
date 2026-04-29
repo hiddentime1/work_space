@@ -138,31 +138,46 @@ export default function ChecklistPage() {
     setShowForm(true);
   };
 
-  // 순서 변경 (위/아래)
+  // 순서 변경 (위/아래) - 옵티미스틱 + 전체 재정렬
   const handleReorder = async (item: ChecklistItem, direction: 'up' | 'down') => {
-    const sortedItems = [...items].sort((a, b) => a.sort_order - b.sort_order);
-    const currentIndex = sortedItems.findIndex(i => i.id === item.id);
+    const currentIndex = items.findIndex(i => i.id === item.id);
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
     
-    if (targetIndex < 0 || targetIndex >= sortedItems.length) return;
+    if (targetIndex < 0 || targetIndex >= items.length) return;
 
-    const targetItem = sortedItems[targetIndex];
+    // 두 항목 위치 교환 + sort_order를 0,1,2... 로 정규화
+    const newOrder = [...items];
+    [newOrder[currentIndex], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[currentIndex]];
+    
+    const reindexed = newOrder.map((it, idx) => ({ ...it, sort_order: idx }));
+    
+    // 옵티미스틱: UI 즉시 업데이트
+    const previousItems = items;
+    setItems(reindexed);
     
     try {
-      await Promise.all([
-        fetch(`/api/checklist-items/${item.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sort_order: targetItem.sort_order }),
-        }),
-        fetch(`/api/checklist-items/${targetItem.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sort_order: item.sort_order }),
-        }),
-      ]);
-      fetchItems();
+      // 실제로 sort_order가 바뀐 항목만 백엔드 업데이트
+      const changed = reindexed.filter(it => {
+        const original = previousItems.find(o => o.id === it.id);
+        return !original || original.sort_order !== it.sort_order;
+      });
+      
+      const results = await Promise.all(
+        changed.map(it =>
+          fetch(`/api/checklist-items/${it.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sort_order: it.sort_order }),
+          }).then(r => r.ok)
+        )
+      );
+      
+      if (results.some(ok => !ok)) {
+        setItems(previousItems);
+        alert('순서 변경에 실패했습니다.');
+      }
     } catch (error) {
+      setItems(previousItems);
       console.error('순서 변경 실패:', error);
     }
   };
