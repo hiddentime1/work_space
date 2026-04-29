@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Task, CreateTaskInput, UpdateTaskInput, DashboardStats, Priority } from '@/types';
-import Dashboard from '@/components/Dashboard';
 import TaskCard from '@/components/TaskCard';
 import TaskForm from '@/components/TaskForm';
 import KakaoConnect from '@/components/KakaoConnect';
@@ -12,8 +11,9 @@ import OverdueTasksModal from '@/components/OverdueTasksModal';
 import BulkActionBar from '@/components/BulkActionBar';
 import MemoButton from '@/components/MemoButton';
 import TodayContactsSidebar from '@/components/TodayContactsSidebar';
+import DailyChecklistModal from '@/components/DailyChecklistModal';
 import Toast, { useToast, ToastData } from '@/components/Toast';
-import { Plus, Bell, RefreshCw, ListTodo, Calendar, List, StickyNote, Phone } from 'lucide-react';
+import { Plus, Bell, RefreshCw, ListTodo, Calendar, List, StickyNote, Phone, CheckSquare } from 'lucide-react';
 import Link from 'next/link';
 import { isToday, startOfDay, addDays } from 'date-fns';
 
@@ -46,6 +46,9 @@ export default function Home() {
   // 미완료 업무 팝업
   const [showOverdueModal, setShowOverdueModal] = useState(false);
   const hasCheckedOverdue = useRef(false);
+  
+  // 체크리스트 모달
+  const [checklistDate, setChecklistDate] = useState<string | null>(null);
   
   // 토스트
   const { toasts, showToast, removeToast } = useToast();
@@ -475,6 +478,15 @@ export default function Home() {
                 <Phone className="w-5 h-5 text-gray-500" />
               </Link>
               
+              {/* 체크리스트 관리 페이지 */}
+              <Link
+                href="/checklist"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="데일리 체크리스트 관리"
+              >
+                <CheckSquare className="w-5 h-5 text-gray-500" />
+              </Link>
+              
               {/* 메모 페이지 */}
               <Link
                 href="/memos"
@@ -526,11 +538,6 @@ export default function Home() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* 대시보드 */}
-        <section className="mb-6">
-          <Dashboard stats={stats} />
-        </section>
-
         {/* 캘린더 뷰 */}
         {viewMode === 'calendar' ? (
           <div className="space-y-4">
@@ -547,6 +554,7 @@ export default function Home() {
               onEditTask={setEditingTask}
               onAddTask={handleAddTaskOnDate}
               onDeleteTask={handleDeleteTask}
+              onOpenChecklist={(date) => setChecklistDate(date)}
             />
           </div>
         ) : (
@@ -665,6 +673,14 @@ export default function Home() {
             await handleToggleComplete(tasks.find(t => t.id === taskId)!);
           }}
           onDelete={handleDeleteTask}
+        />
+      )}
+
+      {/* 일일 체크리스트 모달 */}
+      {checklistDate && (
+        <DailyChecklistModal
+          date={checklistDate}
+          onClose={() => setChecklistDate(null)}
         />
       )}
 

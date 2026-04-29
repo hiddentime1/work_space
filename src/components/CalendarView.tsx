@@ -11,7 +11,8 @@ import {
   Plus,
   Eye,
   EyeOff,
-  Trash2
+  Trash2,
+  ListChecks
 } from 'lucide-react';
 import { 
   format, 
@@ -33,6 +34,7 @@ interface CalendarViewProps {
   onEditTask: (task: Task) => void;
   onAddTask: (date: string) => void;
   onDeleteTask: (taskId: string) => void;
+  onOpenChecklist?: (date: string) => void;
 }
 
 // 우선순위별 색상
@@ -70,7 +72,8 @@ export default function CalendarView({
   onMoveTask,
   onEditTask,
   onAddTask,
-  onDeleteTask
+  onDeleteTask,
+  onOpenChecklist
 }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
@@ -242,17 +245,26 @@ export default function CalendarView({
           </button>
         </div>
 
-        {/* 오늘 버튼 */}
-        {!isCurrentDay && (
-          <div className="px-4 py-2 border-b border-gray-100">
+        {/* 액션 버튼들 */}
+        <div className="px-4 py-2 border-b border-gray-100 flex items-center gap-2">
+          {!isCurrentDay && (
             <button
               onClick={goToToday}
-              className="w-full py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="flex-1 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
               오늘로 이동
             </button>
-          </div>
-        )}
+          )}
+          {onOpenChecklist && (
+            <button
+              onClick={() => onOpenChecklist(dateStr)}
+              className="flex-1 py-2 text-sm font-medium bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg hover:from-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center gap-1.5"
+            >
+              <ListChecks className="w-4 h-4" />
+              체크리스트
+            </button>
+          )}
+        </div>
 
         {/* 태스크 목록 */}
         <div className="p-4 space-y-2 min-h-[200px]">
@@ -423,14 +435,32 @@ export default function CalendarView({
                     {stats.completed}/{stats.total}
                   </div>
                 )}
-                {/* 추가 버튼 */}
-                <button
-                  onClick={() => onAddTask(dateStr)}
-                  className={`absolute top-1 right-1 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity
-                             ${isCurrentDay ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-200 text-gray-500'}`}
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
+                {/* 액션 버튼들 */}
+                <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {onOpenChecklist && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenChecklist(dateStr);
+                      }}
+                      className={`p-1 rounded
+                                 ${isCurrentDay 
+                                   ? 'hover:bg-gray-700 text-emerald-300' 
+                                   : 'hover:bg-emerald-100 text-emerald-500'}`}
+                      title="일일 체크리스트"
+                    >
+                      <ListChecks className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => onAddTask(dateStr)}
+                    className={`p-1 rounded
+                               ${isCurrentDay ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-200 text-gray-500'}`}
+                    title="업무 추가"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
               {/* 태스크 목록 */}

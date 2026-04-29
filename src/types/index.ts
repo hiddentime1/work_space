@@ -136,3 +136,49 @@ export interface UpdateContactInput {
   is_completed?: boolean;
   priority?: Priority;
 }
+
+// 체크리스트 항목 (마스터 템플릿)
+export interface ChecklistItem {
+  id: string;
+  title: string;
+  description?: string;
+  emoji?: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateChecklistItemInput {
+  title: string;
+  description?: string;
+  emoji?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface UpdateChecklistItemInput {
+  title?: string;
+  description?: string;
+  emoji?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+// 일일 체크 기록
+export interface DailyChecklist {
+  id: string;
+  check_date: string; // 'YYYY-MM-DD'
+  item_id: string;
+  is_checked: boolean;
+  checked_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// 항목 + 해당 날짜의 체크 상태를 합친 응답 타입
+export interface ChecklistItemWithStatus extends ChecklistItem {
+  is_checked: boolean;
+  checked_at?: string;
+  daily_id?: string;
+}

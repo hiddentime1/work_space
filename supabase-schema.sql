@@ -122,3 +122,59 @@ CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON tasks(created_at DESC);
 INSERT INTO notification_settings (morning_reminder_time, evening_reminder_time, is_active)
 VALUES ('09:00', '18:00', true)
 ON CONFLICT DO NOTHING;
+
+-- ============================================
+-- 일일 체크리스트 기능
+-- ============================================
+
+-- 체크리스트 항목 마스터 테이블 (템플릿)
+CREATE TABLE IF NOT EXISTS checklist_items (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  emoji TEXT DEFAULT '✅',
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 날짜별 체크 상태 기록 테이블
+CREATE TABLE IF NOT EXISTS daily_checklists (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  check_date DATE NOT NULL,
+  item_id UUID REFERENCES checklist_items(id) ON DELETE CASCADE,
+  is_checked BOOLEAN DEFAULT FALSE,
+  checked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (check_date, item_id)
+);
+
+-- 체크리스트 트리거
+DROP TRIGGER IF EXISTS update_checklist_items_updated_at ON checklist_items;
+CREATE TRIGGER update_checklist_items_updated_at
+  BEFORE UPDATE ON checklist_items
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_daily_checklists_updated_at ON daily_checklists;
+CREATE TRIGGER update_daily_checklists_updated_at
+  BEFORE UPDATE ON daily_checklists
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- 인덱스
+CREATE INDEX IF NOT EXISTS idx_checklist_items_sort_order ON checklist_items(sort_order, created_at);
+CREATE INDEX IF NOT EXISTS idx_checklist_items_is_active ON checklist_items(is_active);
+CREATE INDEX IF NOT EXISTS idx_daily_checklists_check_date ON daily_checklists(check_date);
+CREATE INDEX IF NOT EXISTS idx_daily_checklists_item_id ON daily_checklists(item_id);
+
+-- 기본 체크리스트 항목 (예시)
+INSERT INTO checklist_items (title, emoji, sort_order, is_active)
+VALUES 
+  ('오늘의 업무 정리', '📋', 1, true),
+  ('내일 할 일 계획', '📅', 2, true),
+  ('이메일 확인 완료', '📧', 3, true),
+  ('책상 정리', '🧹', 4, true)
+ON CONFLICT DO NOTHING;
