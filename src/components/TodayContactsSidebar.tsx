@@ -53,8 +53,11 @@ export default function TodayContactsSidebar({}: TodayContactsSidebarProps) {
     setIsOpen(false);
   };
 
-  // 완료 처리
+  // 완료 처리 - 옵티미스틱 (즉시 리스트에서 제거)
   const handleToggleComplete = async (contact: Contact) => {
+    const previousContacts = contacts;
+    setContacts(prev => prev.filter(c => c.id !== contact.id));
+    
     try {
       const res = await fetch(`/api/contacts/${contact.id}`, {
         method: 'PATCH',
@@ -62,11 +65,11 @@ export default function TodayContactsSidebar({}: TodayContactsSidebarProps) {
         body: JSON.stringify({ is_completed: true }),
       });
       const result = await res.json();
-      if (result.success) {
-        setContacts(prev => prev.filter(c => c.id !== contact.id));
+      if (!result.success) {
+        setContacts(previousContacts);
       }
     } catch (error) {
-      console.error('완료 처리 실패:', error);
+      setContacts(previousContacts);
     }
   };
 

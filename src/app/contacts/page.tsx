@@ -110,7 +110,7 @@ export default function ContactsPage() {
     setEditingContact(null);
   };
 
-  // 거래처 추가/수정
+  // 거래처 추가/수정 - 옵티미스틱
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -119,66 +119,114 @@ export default function ContactsPage() {
       return;
     }
 
-    try {
-      if (editingContact) {
-        const res = await fetch(`/api/contacts/${editingContact.id}`, {
+    if (editingContact) {
+      const previousContacts = contacts;
+      const targetId = editingContact.id;
+      
+      setContacts(prev => prev.map(c => 
+        c.id === targetId ? { ...c, ...formData } as Contact : c
+      ));
+      setShowForm(false);
+      resetForm();
+      
+      try {
+        const res = await fetch(`/api/contacts/${targetId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
         });
         const result = await res.json();
-        if (result.success) {
-          fetchContacts();
-          setShowForm(false);
-          resetForm();
+        if (!result.success) {
+          setContacts(previousContacts);
+          alert('수정에 실패했습니다.');
+        } else if (result.data) {
+          setContacts(prev => prev.map(c => c.id === targetId ? result.data : c));
         }
-      } else {
+      } catch (error) {
+        setContacts(previousContacts);
+      }
+    } else {
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const now = new Date().toISOString();
+      const tempContact: Contact = {
+        id: tempId,
+        company_name: formData.company_name,
+        contact_date: formData.contact_date,
+        content: formData.content,
+        contact_person: formData.contact_person,
+        phone: formData.phone,
+        priority: formData.priority || 'medium',
+        is_completed: false,
+        created_at: now,
+        updated_at: now,
+      };
+      
+      setContacts(prev => [...prev, tempContact]);
+      setShowForm(false);
+      resetForm();
+      
+      try {
         const res = await fetch('/api/contacts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
         });
         const result = await res.json();
-        if (result.success) {
-          fetchContacts();
-          setShowForm(false);
-          resetForm();
+        if (result.success && result.data) {
+          setContacts(prev => prev.map(c => c.id === tempId ? result.data : c));
+        } else {
+          setContacts(prev => prev.filter(c => c.id !== tempId));
+          alert('추가에 실패했습니다.');
         }
+      } catch (error) {
+        setContacts(prev => prev.filter(c => c.id !== tempId));
       }
-    } catch (error) {
-      console.error('저장 실패:', error);
     }
   };
 
-  // 완료 토글
+  // 완료 토글 - 옵티미스틱
   const handleToggleComplete = async (contact: Contact) => {
+    const newCompleted = !contact.is_completed;
+    
+    setContacts(prev => prev.map(c => 
+      c.id === contact.id ? { ...c, is_completed: newCompleted } : c
+    ));
+    
     try {
       const res = await fetch(`/api/contacts/${contact.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_completed: !contact.is_completed }),
+        body: JSON.stringify({ is_completed: newCompleted }),
       });
       const result = await res.json();
-      if (result.success) {
-        fetchContacts();
+      if (!result.success) {
+        setContacts(prev => prev.map(c => 
+          c.id === contact.id ? { ...c, is_completed: !newCompleted } : c
+        ));
       }
     } catch (error) {
-      console.error('상태 변경 실패:', error);
+      setContacts(prev => prev.map(c => 
+        c.id === contact.id ? { ...c, is_completed: !newCompleted } : c
+      ));
     }
   };
 
-  // 삭제
+  // 삭제 - 옵티미스틱
   const handleDelete = async (id: string) => {
     if (!confirm('정말 삭제하시겠습니까?')) return;
+    
+    const previousContacts = contacts;
+    setContacts(prev => prev.filter(c => c.id !== id));
     
     try {
       const res = await fetch(`/api/contacts/${id}`, { method: 'DELETE' });
       const result = await res.json();
-      if (result.success) {
-        fetchContacts();
+      if (!result.success) {
+        setContacts(previousContacts);
+        alert('삭제에 실패했습니다.');
       }
     } catch (error) {
-      console.error('삭제 실패:', error);
+      setContacts(previousContacts);
     }
   };
 

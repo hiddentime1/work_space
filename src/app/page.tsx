@@ -177,38 +177,70 @@ export default function Home() {
     await fetchTasks(priority, sort, order);
   };
 
-  // 데이터 새로고침 (태스크 + 통계)
-  const refreshData = async () => {
-    await Promise.all([
-      fetchTasks(priorityFilter, sortBy, sortOrder),
-      fetchStats()
-    ]);
+  // 백그라운드 stats 갱신 (UI 블로킹 X)
+  const refreshStatsBackground = () => {
+    fetchStats();
   };
 
-  // 태스크 생성/수정 통합 핸들러
+  // 태스크 생성/수정 통합 핸들러 - 옵티미스틱
   const handleSubmitTask = async (data: CreateTaskInput | UpdateTaskInput) => {
-    try {
-      if (editingTask) {
-        const res = await fetch(`/api/tasks/${editingTask.id}`, {
+    if (editingTask) {
+      // 수정: 즉시 UI 반영하고 모달 닫기
+      const previousTasks = tasks;
+      const targetId = editingTask.id;
+      
+      setTasks(prev => prev.map(t => 
+        t.id === targetId ? { ...t, ...data } as Task : t
+      ));
+      setEditingTask(null);
+      
+      try {
+        const res = await fetch(`/api/tasks/${targetId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data),
         });
         const result = await res.json();
         
-        if (result.success) {
-          showToast('업무가 수정되었습니다!', 'success');
-          setEditingTask(null);
-          refreshData();
+        if (result.success && result.data) {
+          // 서버 응답으로 동기화
+          setTasks(prev => prev.map(t => t.id === targetId ? result.data : t));
+          refreshStatsBackground();
         } else {
+          setTasks(previousTasks);
           showToast(result.error || '업무 수정에 실패했습니다.', 'error');
         }
-      } else {
-        // 선택된 날짜가 있으면 해당 날짜로 설정
-        const taskData = selectedDate 
-          ? { ...data, due_date: new Date(selectedDate).toISOString() }
-          : data;
-          
+      } catch (error) {
+        setTasks(previousTasks);
+        showToast('업무 수정에 실패했습니다.', 'error');
+      }
+    } else {
+      // 추가: 임시 ID로 즉시 UI에 추가하고 모달 닫기
+      const taskData = selectedDate 
+        ? { ...data, due_date: new Date(selectedDate).toISOString() }
+        : data;
+
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const now = new Date().toISOString();
+      const tempTask: Task = {
+        id: tempId,
+        title: (taskData as CreateTaskInput).title || '',
+        description: taskData.description,
+        status: 'pending',
+        priority: taskData.priority || 'medium',
+        due_date: taskData.due_date,
+        reminder_time: taskData.reminder_time,
+        category: taskData.category,
+        created_at: now,
+        updated_at: now,
+        is_reminded: false,
+      };
+
+      setTasks(prev => [...prev, tempTask]);
+      setShowForm(false);
+      setSelectedDate(null);
+
+      try {
         const res = await fetch('/api/tasks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -216,23 +248,31 @@ export default function Home() {
         });
         const result = await res.json();
         
-        if (result.success) {
-          showToast('업무가 추가되었습니다!', 'success');
-          setShowForm(false);
-          setSelectedDate(null);
-          refreshData();
+        if (result.success && result.data) {
+          // 임시 ID를 실제 ID로 교체
+          setTasks(prev => prev.map(t => t.id === tempId ? result.data : t));
+          refreshStatsBackground();
         } else {
+          setTasks(prev => prev.filter(t => t.id !== tempId));
           showToast(result.error || '업무 추가에 실패했습니다.', 'error');
         }
+      } catch (error) {
+        setTasks(prev => prev.filter(t => t.id !== tempId));
+        showToast('업무 추가에 실패했습니다.', 'error');
       }
-    } catch (error) {
-      showToast(editingTask ? '업무 수정에 실패했습니다.' : '업무 추가에 실패했습니다.', 'error');
     }
   };
 
-  // 완료 토글
+  // 완료 토글 - 옵티미스틱
   const handleToggleComplete = async (task: Task) => {
     const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+    const completedAt = newStatus === 'completed' ? new Date().toISOString() : undefined;
+    
+    setTasks(prev => prev.map(t => 
+      t.id === task.id 
+        ? { ...t, status: newStatus, completed_at: completedAt }
+        : t
+    ));
     
     try {
       const res = await fetch(`/api/tasks/${task.id}`, {
@@ -242,51 +282,67 @@ export default function Home() {
       });
       const result = await res.json();
       
-      if (result.success) {
-        if (newStatus === 'completed') {
-          showToast('업무를 완료했습니다!', 'success');
-        }
-        refreshData();
+      if (!result.success) {
+        // 롤백
+        setTasks(prev => prev.map(t => t.id === task.id ? task : t));
+        showToast('상태 변경에 실패했습니다.', 'error');
+      } else {
+        refreshStatsBackground();
       }
     } catch (error) {
+      setTasks(prev => prev.map(t => t.id === task.id ? task : t));
       showToast('상태 변경에 실패했습니다.', 'error');
     }
   };
 
-  // 태스크 삭제
+  // 태스크 삭제 - 옵티미스틱
   const handleDeleteTask = async (taskId: string) => {
     if (!confirm('정말 삭제하시겠습니까?')) return;
+    
+    const previousTasks = tasks;
+    setTasks(prev => prev.filter(t => t.id !== taskId));
     
     try {
       const res = await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' });
       const result = await res.json();
       
-      if (result.success) {
-        showToast('업무가 삭제되었습니다.', 'info');
-        refreshData();
-      } else {
+      if (!result.success) {
+        setTasks(previousTasks);
         showToast(result.error || '삭제에 실패했습니다.', 'error');
+      } else {
+        refreshStatsBackground();
       }
     } catch (error) {
+      setTasks(previousTasks);
       showToast('삭제에 실패했습니다.', 'error');
     }
   };
 
-  // 태스크 날짜 이동
+  // 태스크 날짜 이동 - 옵티미스틱
   const handleMoveTask = async (taskId: string, newDate: string) => {
+    const previousTasks = tasks;
+    const newDueDate = new Date(newDate).toISOString();
+    
+    setTasks(prev => prev.map(t => 
+      t.id === taskId ? { ...t, due_date: newDueDate } : t
+    ));
+    
     try {
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ due_date: new Date(newDate).toISOString() }),
+        body: JSON.stringify({ due_date: newDueDate }),
       });
       const result = await res.json();
       
-      if (result.success) {
-        showToast('업무가 이동되었습니다.', 'success');
-        refreshData();
+      if (!result.success) {
+        setTasks(previousTasks);
+        showToast('이동에 실패했습니다.', 'error');
+      } else {
+        refreshStatsBackground();
       }
     } catch (error) {
+      setTasks(previousTasks);
       showToast('이동에 실패했습니다.', 'error');
     }
   };
@@ -304,15 +360,24 @@ export default function Home() {
     await handleMoveTask(taskId, todayStr);
   };
 
-  // 전체 오늘로 이관
+  // 전체 오늘로 이관 - 옵티미스틱
   const handleMoveAllToToday = async () => {
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}T00:00:00.000Z`;
     
+    const targetIds = overdueTasks.map(t => t.id);
+    const previousTasks = tasks;
+    
+    setTasks(prev => prev.map(t => 
+      targetIds.includes(t.id) ? { ...t, due_date: todayStr } : t
+    ));
+    setShowOverdueModal(false);
+    showToast(`${targetIds.length}개 업무가 오늘로 이관되었습니다.`, 'success');
+    
     try {
       const results = await Promise.all(
-        overdueTasks.map(async task => {
-          const res = await fetch(`/api/tasks/${task.id}`, {
+        targetIds.map(async id => {
+          const res = await fetch(`/api/tasks/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ due_date: todayStr }),
@@ -321,20 +386,20 @@ export default function Home() {
         })
       );
       
-      const successCount = results.filter(Boolean).length;
-      if (successCount > 0) {
-        showToast(`${successCount}개 업무가 오늘로 이관되었습니다.`, 'success');
+      const failed = results.filter(r => !r).length;
+      if (failed > 0) {
+        setTasks(previousTasks);
+        showToast(`${failed}개 업무 이관 실패. 다시 시도해주세요.`, 'error');
       } else {
-        showToast('이관에 실패했습니다.', 'error');
+        refreshStatsBackground();
       }
-      setShowOverdueModal(false);
-      refreshData();
     } catch (error) {
+      setTasks(previousTasks);
       showToast('이관에 실패했습니다.', 'error');
     }
   };
 
-  // 오늘 미완료 업무 내일로 이관
+  // 오늘 미완료 업무 내일로 이관 - 옵티미스틱
   const handleMoveIncompleteTodayToTomorrow = async () => {
     if (incompleteTodayTasks.length === 0) {
       showToast('이관할 업무가 없습니다.', 'info');
@@ -343,14 +408,21 @@ export default function Home() {
 
     if (!confirm(`${incompleteTodayTasks.length}개의 미완료 업무를 내일로 이관하시겠습니까?`)) return;
     
-    // 내일 날짜 계산 (로컬 타임존 기준)
     const tomorrow = addDays(new Date(), 1);
     const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}T00:00:00.000Z`;
     
+    const targetIds = incompleteTodayTasks.map(t => t.id);
+    const previousTasks = tasks;
+    
+    setTasks(prev => prev.map(t => 
+      targetIds.includes(t.id) ? { ...t, due_date: tomorrowStr } : t
+    ));
+    showToast(`${targetIds.length}개 업무가 내일로 이관되었습니다.`, 'success');
+    
     try {
       const results = await Promise.all(
-        incompleteTodayTasks.map(async task => {
-          const res = await fetch(`/api/tasks/${task.id}`, {
+        targetIds.map(async id => {
+          const res = await fetch(`/api/tasks/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ due_date: tomorrowStr }),
@@ -359,16 +431,15 @@ export default function Home() {
         })
       );
       
-      const successCount = results.filter(Boolean).length;
-      if (successCount === incompleteTodayTasks.length) {
-        showToast(`${successCount}개 업무가 내일로 이관되었습니다.`, 'success');
-      } else if (successCount > 0) {
-        showToast(`${successCount}/${incompleteTodayTasks.length}개 업무가 이관되었습니다.`, 'info');
+      const failed = results.filter(r => !r).length;
+      if (failed > 0) {
+        setTasks(previousTasks);
+        showToast(`${failed}개 업무 이관 실패. 다시 시도해주세요.`, 'error');
       } else {
-        showToast('이관에 실패했습니다.', 'error');
+        refreshStatsBackground();
       }
-      refreshData();
     } catch (error) {
+      setTasks(previousTasks);
       showToast('이관에 실패했습니다.', 'error');
     }
   };
