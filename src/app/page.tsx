@@ -518,7 +518,10 @@ export default function Home() {
   // 새로고침
   const handleRefresh = async () => {
     setIsLoading(true);
-    await refreshData();
+    await Promise.all([
+      fetchTasks(priorityFilter, sortBy, sortOrder),
+      fetchStats()
+    ]);
     setIsLoading(false);
     showToast('새로고침 완료!', 'info');
   };
