@@ -26,13 +26,22 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 활성 체크리스트 항목 조회
-    const { data: items, error: itemsError } = await supabase
-      .from('checklist_items')
-      .select('*')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: true });
+    // 활성 항목 + 해당 날짜 체크 기록을 병렬로 조회 (순차 → 병렬로 왕복 1회 절감)
+    const [
+      { data: items, error: itemsError },
+      { data: checks, error: checksError },
+    ] = await Promise.all([
+      supabase
+        .from('checklist_items')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('daily_checklists')
+        .select('*')
+        .eq('check_date', date),
+    ]);
 
     if (itemsError) {
       return NextResponse.json<ApiResponse<null>>({
@@ -40,12 +49,6 @@ export async function GET(request: NextRequest) {
         error: itemsError.message
       }, { status: 500 });
     }
-
-    // 해당 날짜의 체크 기록 조회
-    const { data: checks, error: checksError } = await supabase
-      .from('daily_checklists')
-      .select('*')
-      .eq('check_date', date);
 
     if (checksError) {
       return NextResponse.json<ApiResponse<null>>({

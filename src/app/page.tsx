@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Task, CreateTaskInput, UpdateTaskInput, DashboardStats, Priority } from '@/types';
+import { Task, CreateTaskInput, UpdateTaskInput, Priority } from '@/types';
 import TaskCard from '@/components/TaskCard';
 import TaskForm from '@/components/TaskForm';
 import KakaoConnect from '@/components/KakaoConnect';
@@ -22,10 +22,6 @@ type ViewMode = 'list' | 'calendar';
 export default function Home() {
   // 상태 관리
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [stats, setStats] = useState<DashboardStats>({
-    total: 0, pending: 0, in_progress: 0, completed: 0, 
-    overdue: 0, completedToday: 0, dueToday: 0
-  });
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -98,18 +94,6 @@ export default function Home() {
     }
   };
 
-  const fetchStats = async () => {
-    try {
-      const res = await fetch('/api/stats');
-      const data = await res.json();
-      if (data.success) {
-        setStats(data.data);
-      }
-    } catch (error) {
-      console.error('통계 로드 실패:', error);
-    }
-  };
-
   const fetchNotificationSettings = async () => {
     try {
       const res = await fetch('/api/notification/settings');
@@ -132,7 +116,6 @@ export default function Home() {
       setIsLoading(true);
       await Promise.all([
         fetchTasks(priorityFilter, sortBy, sortOrder),
-        fetchStats(),
         fetchNotificationSettings()
       ]);
       setIsLoading(false);
@@ -177,10 +160,9 @@ export default function Home() {
     await fetchTasks(priority, sort, order);
   };
 
-  // 백그라운드 stats 갱신 (UI 블로킹 X)
-  const refreshStatsBackground = () => {
-    fetchStats();
-  };
+  // 통계 위젯은 화면에서 사용하지 않으므로 갱신 요청을 보내지 않는다 (no-op).
+  // 과거에는 변경마다 /api/stats 전체 스캔을 호출하고 결과를 버려 불필요한 지연을 유발했다.
+  const refreshStatsBackground = () => {};
 
   // 태스크 생성/수정 통합 핸들러 - 옵티미스틱
   const handleSubmitTask = async (data: CreateTaskInput | UpdateTaskInput) => {
@@ -518,10 +500,7 @@ export default function Home() {
   // 새로고침
   const handleRefresh = async () => {
     setIsLoading(true);
-    await Promise.all([
-      fetchTasks(priorityFilter, sortBy, sortOrder),
-      fetchStats()
-    ]);
+    await fetchTasks(priorityFilter, sortBy, sortOrder);
     setIsLoading(false);
     showToast('새로고침 완료!', 'info');
   };
