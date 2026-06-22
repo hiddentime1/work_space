@@ -533,7 +533,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="bg-gray-900 p-2 rounded-lg">
+              <div className="bg-blue-500 p-2 rounded-xl">
                 <Bell className="w-5 h-5 text-white" />
               </div>
               <div>

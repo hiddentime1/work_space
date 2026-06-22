@@ -94,9 +94,9 @@ export default function DailyChecklistModal({ date, onClose }: DailyChecklistMod
       <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-lg max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl modal-slide-up">
         {/* 그라데이션 헤더 */}
         <div className={`relative overflow-hidden ${
-          isAllCompleted 
-            ? 'bg-gradient-to-br from-yellow-400 via-orange-400 to-pink-500'
-            : 'bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500'
+          isAllCompleted
+            ? 'bg-green-500'
+            : 'bg-blue-500'
         } text-white p-5 sm:p-6 transition-all duration-500`}>
           {/* 배경 장식 */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
@@ -174,7 +174,7 @@ export default function DailyChecklistModal({ date, onClose }: DailyChecklistMod
               <Link
                 href="/checklist"
                 onClick={onClose}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-5 py-2.5 rounded-xl font-medium hover:shadow-lg transition-all"
+                className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-5 py-2.5 rounded-xl font-semibold transition-colors"
               >
                 <Sparkles className="w-4 h-4" />
                 체크리스트 만들기

@@ -274,9 +274,9 @@ export default function ContactsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-blue-50 via-purple-50 to-pink-50">
+    <main className="min-h-screen bg-gray-50">
       {/* 헤더 */}
-      <header className="bg-gradient-to-r from-blue-500 to-purple-500 text-white sticky top-0 z-40 shadow-lg">
+      <header className="bg-blue-500 text-white sticky top-0 z-40 shadow">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">

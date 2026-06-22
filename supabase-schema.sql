@@ -1,6 +1,16 @@
 -- Supabase에서 실행할 SQL 스키마
 -- Supabase 대시보드 > SQL Editor에서 실행하세요
 
+-- updated_at 자동 업데이트 함수
+-- (아래 모든 트리거가 이 함수를 참조하므로 반드시 먼저 정의해야 한다)
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Tasks 테이블
 CREATE TABLE IF NOT EXISTS tasks (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -83,15 +93,6 @@ CREATE TRIGGER update_contacts_updated_at
 CREATE INDEX IF NOT EXISTS idx_contacts_contact_date ON contacts(contact_date);
 CREATE INDEX IF NOT EXISTS idx_contacts_is_completed ON contacts(is_completed);
 CREATE INDEX IF NOT EXISTS idx_contacts_created_at ON contacts(created_at DESC);
-
--- updated_at 자동 업데이트 함수
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
 
 -- Tasks 테이블 트리거
 DROP TRIGGER IF EXISTS update_tasks_updated_at ON tasks;

@@ -258,7 +258,7 @@ export default function CalendarView({
           {onOpenChecklist && (
             <button
               onClick={() => onOpenChecklist(dateStr)}
-              className="flex-1 py-2 text-sm font-medium bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg hover:from-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center gap-1.5"
+              className="flex-1 py-2 text-sm font-semibold bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors flex items-center justify-center gap-1.5"
             >
               <ListChecks className="w-4 h-4" />
               체크리스트
@@ -274,7 +274,7 @@ export default function CalendarView({
               <p className="text-sm">업무가 없습니다</p>
               <button
                 onClick={() => onAddTask(dateStr)}
-                className="mt-3 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg"
+                className="mt-3 px-4 py-2 bg-blue-500 text-white text-sm font-semibold rounded-xl"
               >
                 업무 추가
               </button>
@@ -422,7 +422,7 @@ export default function CalendarView({
             >
               {/* 날짜 헤더 */}
               <div className={`p-2 text-center border-b border-gray-100 relative group
-                              ${isCurrentDay ? 'bg-gray-900' : ''}`}>
+                              ${isCurrentDay ? 'bg-blue-500' : ''}`}>
                 <div className={`text-xs ${isCurrentDay ? 'text-gray-300' : isWeekendDay ? 'text-gray-400' : 'text-gray-500'}`}>
                   {format(day, 'EEE', { locale: ko })}
                 </div>

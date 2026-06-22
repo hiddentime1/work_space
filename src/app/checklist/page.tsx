@@ -183,9 +183,9 @@ export default function ChecklistPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-teal-50 to-cyan-50">
+    <main className="min-h-screen bg-gray-50">
       {/* 헤더 */}
-      <header className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white sticky top-0 z-40 shadow-lg">
+      <header className="bg-blue-500 text-white sticky top-0 z-40 shadow">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -201,7 +201,7 @@ export default function ChecklistPage() {
                 </div>
                 <div>
                   <h1 className="text-lg font-bold">데일리 체크리스트</h1>
-                  <p className="text-emerald-100 text-xs">매일 반복할 체크 항목 관리</p>
+                  <p className="text-blue-100 text-xs">매일 반복할 체크 항목 관리</p>
                 </div>
               </div>
             </div>
@@ -253,7 +253,7 @@ export default function ChecklistPage() {
             </p>
             <button
               onClick={handleAdd}
-              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-6 py-3 rounded-xl font-medium transition-all shadow-md hover:shadow-lg flex items-center gap-2 mx-auto"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-semibold transition-colors shadow hover:shadow-md flex items-center gap-2 mx-auto"
             >
               <Plus className="w-5 h-5" />
               첫 항목 추가
@@ -376,7 +376,7 @@ export default function ChecklistPage() {
                       onClick={() => setFormData(prev => ({ ...prev, emoji }))}
                       className={`text-2xl p-2 rounded-lg transition-all ${
                         formData.emoji === emoji
-                          ? 'bg-emerald-100 ring-2 ring-emerald-500 scale-110'
+                          ? 'bg-blue-50 ring-2 ring-blue-500 scale-110'
                           : 'hover:bg-gray-100'
                       }`}
                     >
@@ -440,7 +440,7 @@ export default function ChecklistPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium hover:from-emerald-600 hover:to-teal-600 transition-all shadow-md flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-colors shadow flex items-center justify-center gap-2"
                 >
                   <Save className="w-4 h-4" />
                   {editingItem ? '수정' : '추가'}

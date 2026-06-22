@@ -18,10 +18,11 @@ const icons = {
   info: Info,
 };
 
-const styles = {
-  success: 'bg-green-500',
-  error: 'bg-red-500',
-  info: 'bg-primary-500',
+// Toss 토스트는 단일 다크 배경(#191f28). 아이콘 색으로만 상태를 구분한다.
+const iconColors = {
+  success: 'text-green-400',
+  error: 'text-red-400',
+  info: 'text-blue-400',
 };
 
 export default function Toast({ message, type, onClose, duration = 3000 }: ToastProps) {
@@ -38,11 +39,11 @@ export default function Toast({ message, type, onClose, duration = 3000 }: Toast
   }, [duration, onClose]);
 
   return (
-    <div 
-      className={`toast ${styles[type]} flex items-center gap-3 
+    <div
+      className={`toast flex items-center gap-3
                   transition-all duration-300 ${isVisible ? 'opacity-100' : 'opacity-0 translate-y-2'}`}
     >
-      <Icon className="w-5 h-5 text-white flex-shrink-0" />
+      <Icon className={`w-5 h-5 flex-shrink-0 ${iconColors[type]}`} />
       <p className="text-white font-medium">{message}</p>
       <button 
         onClick={() => {
