@@ -12,7 +12,8 @@ import {
   Eye,
   EyeOff,
   Trash2,
-  ListChecks
+  ListChecks,
+  PauseCircle
 } from 'lucide-react';
 import { 
   format, 
@@ -34,6 +35,7 @@ interface CalendarViewProps {
   onEditTask: (task: Task) => void;
   onAddTask: (date: string) => void;
   onDeleteTask: (taskId: string) => void;
+  onHoldTask: (taskId: string) => void;
   onOpenChecklist?: (date: string) => void;
 }
 
@@ -73,6 +75,7 @@ export default function CalendarView({
   onEditTask,
   onAddTask,
   onDeleteTask,
+  onHoldTask,
   onOpenChecklist
 }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -323,18 +326,31 @@ export default function CalendarView({
                       </span>
                     )}
                   </div>
-                  {/* 삭제 버튼 */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (confirm('이 업무를 삭제하시겠습니까?')) {
-                        onDeleteTask(task.id);
-                      }
-                    }}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                  {/* 보류 / 삭제 버튼 */}
+                  <div className="flex items-center gap-0.5 flex-shrink-0">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onHoldTask(task.id);
+                      }}
+                      className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                      title="보류하기"
+                    >
+                      <PauseCircle className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm('이 업무를 삭제하시겠습니까?')) {
+                          onDeleteTask(task.id);
+                        }
+                      }}
+                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      title="삭제"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))
@@ -510,11 +526,22 @@ export default function CalendarView({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              onHoldTask(task.id);
+                            }}
+                            className="p-0.5 text-gray-300 hover:text-amber-600 hover:bg-amber-50 rounded opacity-0 group-hover:opacity-100 transition-all"
+                            title="보류하기"
+                          >
+                            <PauseCircle className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
                               if (confirm('이 업무를 삭제하시겠습니까?')) {
                                 onDeleteTask(task.id);
                               }
                             }}
                             className="p-0.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all"
+                            title="삭제"
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>

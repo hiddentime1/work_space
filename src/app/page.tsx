@@ -7,17 +7,17 @@ import TaskForm from '@/components/TaskForm';
 import KakaoConnect from '@/components/KakaoConnect';
 import FilterBar, { SortOption, SortOrder } from '@/components/FilterBar';
 import CalendarView from '@/components/CalendarView';
+import VerticalView from '@/components/VerticalView';
 import OverdueTasksModal from '@/components/OverdueTasksModal';
 import BulkActionBar from '@/components/BulkActionBar';
-import MemoButton from '@/components/MemoButton';
-import TodayContactsSidebar from '@/components/TodayContactsSidebar';
+import WorkSidebar from '@/components/WorkSidebar';
 import DailyChecklistModal from '@/components/DailyChecklistModal';
 import Toast, { useToast, ToastData } from '@/components/Toast';
-import { Plus, Bell, RefreshCw, ListTodo, Calendar, List, StickyNote, Phone, CheckSquare } from 'lucide-react';
+import { Plus, Bell, RefreshCw, ListTodo, Calendar, List, StickyNote, Phone, CheckSquare, LayoutList } from 'lucide-react';
 import Link from 'next/link';
 import { isToday, startOfDay, addDays } from 'date-fns';
 
-type ViewMode = 'list' | 'calendar';
+type ViewMode = 'list' | 'calendar' | 'vertical';
 
 export default function Home() {
   // 상태 관리
@@ -71,6 +71,18 @@ export default function Home() {
       return isToday(new Date(task.due_date));
     });
   }, [tasks]);
+
+  // 보류 업무 (특정 날짜에 배정되지 않고 따로 모아둔 업무)
+  const onHoldTasks = useMemo(
+    () => tasks.filter(task => task.status === 'on_hold'),
+    [tasks]
+  );
+
+  // 보류를 제외한 일반 업무 (리스트/캘린더/세로뷰에 표시)
+  const activeTasks = useMemo(
+    () => tasks.filter(task => task.status !== 'on_hold'),
+    [tasks]
+  );
 
   // 데이터 로드 함수
   const fetchTasks = async (
@@ -329,6 +341,82 @@ export default function Home() {
     }
   };
 
+  // 업무 보류 처리 - 옵티미스틱 (날짜 비우고 status=on_hold)
+  const handleHoldTask = async (taskId: string) => {
+    const previousTasks = tasks;
+    setTasks(prev => prev.map(t =>
+      t.id === taskId ? { ...t, status: 'on_hold', due_date: undefined } : t
+    ));
+    showToast('보류 업무로 이동했습니다.', 'info');
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'on_hold', due_date: null }),
+      });
+      const result = await res.json();
+      if (!result.success) {
+        setTasks(previousTasks);
+        showToast('보류 처리에 실패했습니다.', 'error');
+      }
+    } catch (error) {
+      setTasks(previousTasks);
+      showToast('보류 처리에 실패했습니다.', 'error');
+    }
+  };
+
+  // 보류 업무에 날짜 배정 - 옵티미스틱 (status=pending 으로 복귀)
+  const handleAssignDate = async (taskId: string, dateStr: string) => {
+    const previousTasks = tasks;
+    const newDueDate = new Date(dateStr).toISOString();
+
+    setTasks(prev => prev.map(t =>
+      t.id === taskId ? { ...t, status: 'pending', due_date: newDueDate } : t
+    ));
+    showToast('업무가 해당 날짜로 배정되었습니다.', 'success');
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'pending', due_date: newDueDate }),
+      });
+      const result = await res.json();
+      if (!result.success) {
+        setTasks(previousTasks);
+        showToast('날짜 배정에 실패했습니다.', 'error');
+      }
+    } catch (error) {
+      setTasks(previousTasks);
+      showToast('날짜 배정에 실패했습니다.', 'error');
+    }
+  };
+
+  // 보류 해제 (날짜 없이 대기 상태로 복귀)
+  const handleUnhold = async (taskId: string) => {
+    const previousTasks = tasks;
+    setTasks(prev => prev.map(t =>
+      t.id === taskId ? { ...t, status: 'pending' } : t
+    ));
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'pending' }),
+      });
+      const result = await res.json();
+      if (!result.success) {
+        setTasks(previousTasks);
+        showToast('보류 해제에 실패했습니다.', 'error');
+      }
+    } catch (error) {
+      setTasks(previousTasks);
+      showToast('보류 해제에 실패했습니다.', 'error');
+    }
+  };
+
   // 캘린더에서 날짜 클릭 시 해당 날짜로 업무 추가
   const handleAddTaskOnDate = (date: string) => {
     setSelectedDate(date);
@@ -506,7 +594,7 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen pb-20 bg-gray-100">
+    <main className="min-h-screen pb-20 bg-gray-100 pl-16">
       {/* 헤더 */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-4">
@@ -565,9 +653,18 @@ export default function Home() {
                   className={`p-1.5 rounded transition-colors ${
                     viewMode === 'calendar' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'
                   }`}
-                  title="캘린더 보기"
+                  title="주간 캘린더 보기"
                 >
                   <Calendar className={`w-4 h-4 ${viewMode === 'calendar' ? 'text-gray-900' : 'text-gray-500'}`} />
+                </button>
+                <button
+                  onClick={() => setViewMode('vertical')}
+                  className={`p-1.5 rounded transition-colors ${
+                    viewMode === 'vertical' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'
+                  }`}
+                  title="세로형 날짜 보기"
+                >
+                  <LayoutList className={`w-4 h-4 ${viewMode === 'vertical' ? 'text-gray-900' : 'text-gray-500'}`} />
                 </button>
               </div>
               
@@ -599,14 +696,34 @@ export default function Home() {
               incompleteTodayCount={incompleteTodayTasks.length}
               onMoveToTomorrow={handleMoveIncompleteTodayToTomorrow}
             />
-            
+
             <CalendarView
-              tasks={tasks}
+              tasks={activeTasks}
               onToggleComplete={handleToggleComplete}
               onMoveTask={handleMoveTask}
               onEditTask={setEditingTask}
               onAddTask={handleAddTaskOnDate}
               onDeleteTask={handleDeleteTask}
+              onHoldTask={handleHoldTask}
+              onOpenChecklist={(date) => setChecklistDate(date)}
+            />
+          </div>
+        ) : viewMode === 'vertical' ? (
+          <div className="space-y-4">
+            {/* 오늘 미완료 업무 일괄 이관 바 */}
+            <BulkActionBar
+              incompleteTodayCount={incompleteTodayTasks.length}
+              onMoveToTomorrow={handleMoveIncompleteTodayToTomorrow}
+            />
+
+            <VerticalView
+              tasks={activeTasks}
+              onToggleComplete={handleToggleComplete}
+              onMoveTask={handleMoveTask}
+              onEditTask={setEditingTask}
+              onAddTask={handleAddTaskOnDate}
+              onDeleteTask={handleDeleteTask}
+              onHoldTask={handleHoldTask}
               onOpenChecklist={(date) => setChecklistDate(date)}
             />
           </div>
@@ -638,14 +755,14 @@ export default function Home() {
                     <RefreshCw className="w-6 h-6 text-gray-400 animate-spin mx-auto mb-2" />
                     <p className="text-gray-500 text-sm">로딩중...</p>
                   </div>
-                ) : tasks.length === 0 ? (
+                ) : activeTasks.length === 0 ? (
                   <div className="bg-white rounded-xl p-10 text-center border border-gray-200">
                     <div className="bg-gray-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
                       <ListTodo className="w-6 h-6 text-gray-400" />
                     </div>
                     <h3 className="font-medium text-gray-700 mb-1">업무가 없습니다</h3>
                     <p className="text-gray-500 text-sm mb-4">새로운 업무를 추가해보세요</p>
-                    <button 
+                    <button
                       onClick={() => setShowForm(true)}
                       className="btn-primary inline-flex items-center gap-2"
                     >
@@ -654,13 +771,14 @@ export default function Home() {
                     </button>
                   </div>
                 ) : (
-                  tasks.map((task) => (
+                  activeTasks.map((task) => (
                     <TaskCard
                       key={task.id}
                       task={task}
                       onToggleComplete={handleToggleComplete}
                       onEdit={setEditingTask}
                       onDelete={handleDeleteTask}
+                      onHold={handleHoldTask}
                     />
                   ))
                 )}
@@ -737,13 +855,14 @@ export default function Home() {
         />
       )}
 
-      {/* 메모 플로팅 버튼 */}
-      <MemoButton
-        onSave={handleSaveMemo}
+      {/* 좌측 사이드바: 메모 / 거래처 / 보류 업무 */}
+      <WorkSidebar
+        onSaveMemo={handleSaveMemo}
+        onHoldTasks={onHoldTasks}
+        onAssignDate={handleAssignDate}
+        onUnhold={handleUnhold}
+        onDeleteTask={handleDeleteTask}
       />
-
-      {/* 오늘 연락할 업체 사이드바 */}
-      <TodayContactsSidebar />
 
       {/* 토스트 알림 */}
       <div className="fixed bottom-4 right-24 space-y-2 z-50">

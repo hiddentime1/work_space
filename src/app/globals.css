@@ -110,6 +110,10 @@ body {
   @apply bg-red-50 text-red-600;
 }
 
+.status-on_hold {
+  @apply bg-amber-50 text-amber-600;
+}
+
 /* 입력 필드 포커스 - Toss는 blue500 보더로 포커스 표현 */
 input:focus, textarea:focus, select:focus {
   @apply outline-none ring-2 ring-blue-500/30 border-blue-500;

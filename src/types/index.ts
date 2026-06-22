@@ -1,5 +1,6 @@
 // Task 상태 타입
-export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'overdue';
+// on_hold: 보류 업무 (특정 날짜에 배정되지 않고 따로 모아두는 상태)
+export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'overdue' | 'on_hold';
 
 // 우선순위 타입
 export type Priority = 'low' | 'medium' | 'high' | 'urgent';

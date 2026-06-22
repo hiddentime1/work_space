@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     // 지연된 태스크 상태 업데이트
     const now = new Date();
     const updatedData = data?.map(task => {
-      if (task.due_date && task.status !== 'completed') {
+      if (task.due_date && task.status !== 'completed' && task.status !== 'on_hold') {
         const dueDate = new Date(task.due_date);
         if (dueDate < now) {
           return { ...task, status: 'overdue' };

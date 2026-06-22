@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Task, Priority, TaskStatus } from '@/types';
-import { Check, MoreVertical, Edit2, Trash2, Calendar } from 'lucide-react';
+import { Check, MoreVertical, Edit2, Trash2, Calendar, PauseCircle } from 'lucide-react';
 import { format, isPast, isToday, isTomorrow, differenceInDays } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -11,6 +11,7 @@ interface TaskCardProps {
   onToggleComplete: (task: Task) => void;
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
+  onHold?: (taskId: string) => void;
 }
 
 const priorityLabels: Record<Priority, string> = {
@@ -25,9 +26,10 @@ const statusLabels: Record<TaskStatus, string> = {
   in_progress: '진행중',
   completed: '완료',
   overdue: '지연',
+  on_hold: '보류',
 };
 
-export default function TaskCard({ task, onToggleComplete, onEdit, onDelete }: TaskCardProps) {
+export default function TaskCard({ task, onToggleComplete, onEdit, onDelete, onHold }: TaskCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const isCompleted = task.status === 'completed';
   
@@ -96,6 +98,18 @@ export default function TaskCard({ task, onToggleComplete, onEdit, onDelete }: T
                       <Edit2 className="w-3.5 h-3.5" />
                       수정
                     </button>
+                    {onHold && !isCompleted && (
+                      <button
+                        onClick={() => {
+                          onHold(task.id);
+                          setShowMenu(false);
+                        }}
+                        className="w-full px-3 py-1.5 text-left text-sm text-amber-600 hover:bg-amber-50 flex items-center gap-2"
+                      >
+                        <PauseCircle className="w-3.5 h-3.5" />
+                        보류하기
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         onDelete(task.id);
