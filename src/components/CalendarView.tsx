@@ -423,15 +423,15 @@ export default function CalendarView({
               {/* 날짜 헤더 */}
               <div className={`p-2 text-center border-b border-gray-100 relative group
                               ${isCurrentDay ? 'bg-blue-500' : ''}`}>
-                <div className={`text-xs ${isCurrentDay ? 'text-gray-300' : isWeekendDay ? 'text-gray-400' : 'text-gray-500'}`}>
+                <div className={`text-xs ${isCurrentDay ? 'text-blue-100' : isWeekendDay ? 'text-gray-400' : 'text-gray-500'}`}>
                   {format(day, 'EEE', { locale: ko })}
                 </div>
-                <div className={`text-lg font-semibold 
+                <div className={`text-lg font-bold
                                 ${isCurrentDay ? 'text-white' : 'text-gray-800'}`}>
                   {format(day, 'd')}
                 </div>
                 {stats.total > 0 && (
-                  <div className={`text-xs ${isCurrentDay ? 'text-gray-400' : 'text-gray-400'}`}>
+                  <div className={`text-xs ${isCurrentDay ? 'text-blue-100' : 'text-gray-400'}`}>
                     {stats.completed}/{stats.total}
                   </div>
                 )}

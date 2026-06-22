@@ -46,9 +46,9 @@ export default function TaskCard({ task, onToggleComplete, onEdit, onDelete }: T
   const isOverdue = task.due_date && isPast(new Date(task.due_date)) && !isCompleted;
 
   return (
-    <div 
-      className={`task-card bg-white rounded-lg p-3 border border-gray-200
-                  ${isCompleted ? 'opacity-50' : ''}`}
+    <div
+      className={`task-card bg-white rounded-2xl p-4 border border-gray-200 shadow-sm
+                  ${isCompleted ? 'opacity-60' : ''}`}
     >
       <div className="flex items-start gap-3">
         {/* 체크박스 */}
@@ -63,8 +63,8 @@ export default function TaskCard({ task, onToggleComplete, onEdit, onDelete }: T
         {/* 내용 */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <h3 
-              className={`font-medium text-gray-800 text-sm
+            <h3
+              className={`font-semibold text-gray-900 text-[15px] leading-snug
                           ${isCompleted ? 'line-through text-gray-400' : ''}`}
             >
               {task.title}

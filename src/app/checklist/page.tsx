@@ -183,7 +183,7 @@ export default function ChecklistPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-gray-100">
       {/* 헤더 */}
       <header className="bg-blue-500 text-white sticky top-0 z-40 shadow">
         <div className="max-w-4xl mx-auto px-4 py-4">

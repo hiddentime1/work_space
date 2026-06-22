@@ -527,7 +527,7 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen pb-20 bg-gray-50">
+    <main className="min-h-screen pb-20 bg-gray-100">
       {/* 헤더 */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-4">
