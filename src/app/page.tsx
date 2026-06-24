@@ -865,8 +865,8 @@ export default function Home() {
         onDeleteTask={handleDeleteTask}
       />
 
-      {/* 토스트 알림 */}
-      <div className="fixed bottom-4 right-24 space-y-2 z-50">
+      {/* 토스트 알림 (모바일은 하단 탭바 위로) */}
+      <div className="fixed bottom-20 md:bottom-4 right-4 md:right-24 space-y-2 z-[55]">
         {toasts.map((toast: ToastData) => (
           <Toast
             key={toast.id}

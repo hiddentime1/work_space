@@ -126,7 +126,7 @@ export default function WorkSidebar({
     <>
       {/* 좌측 아이콘 레일 */}
       <nav
-        className="fixed z-50 bg-white border-gray-200 flex
+        className="fixed z-40 bg-white border-gray-200 flex
                    inset-x-0 bottom-0 h-16 flex-row items-stretch justify-around border-t
                    md:inset-x-auto md:left-0 md:top-0 md:h-full md:w-16 md:flex-col md:items-center md:justify-start md:border-t-0 md:border-r md:pt-20 md:gap-1"
       >
@@ -153,9 +153,9 @@ export default function WorkSidebar({
       {/* 패널 + 백드롭 */}
       {active && (
         <>
-          <div className="fixed inset-0 bg-black/30 z-40 lg:bg-black/10" onClick={close} />
+          <div className="fixed inset-0 bg-black/30 z-30 lg:bg-black/10" onClick={close} />
           <div
-            className="fixed bg-white shadow-xl z-50 flex flex-col modal-slide-up
+            className="fixed bg-white shadow-xl z-40 flex flex-col modal-slide-up
                        inset-x-0 bottom-16 max-h-[72vh] rounded-t-2xl border-t border-gray-200
                        md:inset-x-auto md:left-16 md:top-0 md:bottom-0 md:max-h-none md:h-full md:w-[340px] md:max-w-[calc(100vw-4rem)] md:rounded-none md:border-t-0 md:border-r"
           >
