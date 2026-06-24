@@ -222,6 +222,7 @@ export default function Home() {
         description: taskData.description,
         status: 'pending',
         priority: taskData.priority || 'medium',
+        task_type: taskData.task_type || 'task',
         due_date: taskData.due_date,
         reminder_time: taskData.reminder_time,
         category: taskData.category,
@@ -594,51 +595,51 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen pb-20 bg-gray-100 pl-16">
+    <main className="min-h-screen pb-24 md:pb-20 bg-gray-100 md:pl-16">
       {/* 헤더 */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-500 p-2 rounded-xl">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-shrink">
+              <div className="bg-blue-500 p-2 rounded-xl flex-shrink-0">
                 <Bell className="w-5 h-5 text-white" />
               </div>
-              <div>
-                <h1 className="text-lg font-bold text-gray-900">업무 리마인더</h1>
-                <p className="text-xs text-gray-500">할 일 관리 & 카카오톡 알림</p>
+              <div className="min-w-0">
+                <h1 className="text-base sm:text-lg font-bold text-gray-900 whitespace-nowrap truncate">업무 리마인더</h1>
+                <p className="hidden sm:block text-xs text-gray-500">할 일 관리 & 카카오톡 알림</p>
               </div>
             </div>
-            
-            <div className="flex items-center gap-2">
-              {/* 거래처 연락 페이지 */}
+
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+              {/* 거래처 연락 페이지 (모바일은 하단 탭바 사용) */}
               <Link
                 href="/contacts"
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="hidden sm:inline-flex p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 title="거래처 연락"
               >
                 <Phone className="w-5 h-5 text-gray-500" />
               </Link>
-              
+
               {/* 체크리스트 관리 페이지 */}
               <Link
                 href="/checklist"
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="hidden sm:inline-flex p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 title="데일리 체크리스트 관리"
               >
                 <CheckSquare className="w-5 h-5 text-gray-500" />
               </Link>
-              
+
               {/* 메모 페이지 */}
               <Link
                 href="/memos"
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="hidden sm:inline-flex p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 title="메모 목록"
               >
                 <StickyNote className="w-5 h-5 text-gray-500" />
               </Link>
-              
+
               {/* 뷰 모드 전환 */}
-              <div className="hidden sm:flex items-center bg-gray-100 rounded-lg p-1">
+              <div className="flex items-center bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode('list')}
                   className={`p-1.5 rounded transition-colors ${
@@ -668,9 +669,9 @@ export default function Home() {
                 </button>
               </div>
               
-              <button 
+              <button
                 onClick={handleRefresh}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="hidden sm:inline-flex p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 title="새로고침"
               >
                 <RefreshCw className={`w-5 h-5 text-gray-500 ${isLoading ? 'animate-spin' : ''}`} />

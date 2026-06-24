@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Task, Priority, TaskStatus } from '@/types';
-import { Check, MoreVertical, Edit2, Trash2, Calendar, PauseCircle } from 'lucide-react';
+import { Check, MoreVertical, Edit2, Trash2, Calendar, PauseCircle, Users } from 'lucide-react';
 import { format, isPast, isToday, isTomorrow, differenceInDays } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -136,6 +136,14 @@ export default function TaskCard({ task, onToggleComplete, onEdit, onDelete, onH
 
           {/* 태그들 */}
           <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            {/* 미팅 표시 */}
+            {task.task_type === 'meeting' && (
+              <span className="px-2 py-0.5 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-600 flex items-center gap-1">
+                <Users className="w-3 h-3" />
+                미팅
+              </span>
+            )}
+
             {/* 우선순위 */}
             <span className={`priority-badge priority-${task.priority}`}>
               {priorityLabels[task.priority]}

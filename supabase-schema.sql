@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   description TEXT,
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'overdue', 'on_hold')),
   priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  task_type TEXT DEFAULT 'task' CHECK (task_type IN ('task', 'meeting')),
   due_date TIMESTAMPTZ,
   reminder_time TIME,
   created_at TIMESTAMPTZ DEFAULT NOW(),

@@ -13,6 +13,8 @@ import {
   Trash2,
   ListChecks,
   PauseCircle,
+  Users,
+  Briefcase,
 } from 'lucide-react';
 import {
   format,
@@ -120,6 +122,97 @@ export default function VerticalView({
     setDragOverDate(null);
   };
 
+  // 개별 업무 카드 렌더 (업무/미팅 공용)
+  const renderTask = (task: Task) => {
+    const isCompleted = task.status === 'completed';
+    const isMeeting = task.task_type === 'meeting';
+    return (
+      <div
+        key={task.id}
+        draggable
+        onDragStart={(e) => handleDragStart(e, task)}
+        onDragEnd={handleDragEnd}
+        className={`group rounded-xl border p-3.5 transition-all
+                   ${isCompleted
+                     ? 'bg-gray-50 border-gray-100'
+                     : isMeeting
+                       ? 'bg-indigo-50/60 border-indigo-200 hover:border-indigo-300'
+                       : task.priority === 'urgent'
+                         ? 'bg-red-50/60 border-red-200'
+                         : task.priority === 'high'
+                           ? 'bg-orange-50/60 border-orange-200'
+                           : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm'}
+                   ${draggedTask?.id === task.id ? 'opacity-50' : ''}`}
+      >
+        <div className="flex items-start gap-3">
+          <GripVertical className="w-4 h-4 text-gray-300 flex-shrink-0 mt-1 cursor-move opacity-0 group-hover:opacity-100 transition-opacity" />
+          <button
+            onClick={() => onToggleComplete(task)}
+            className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center mt-0.5
+                       ${isCompleted
+                         ? 'bg-gray-400 border-gray-400'
+                         : isMeeting
+                           ? 'border-indigo-400'
+                           : task.priority === 'urgent'
+                             ? 'border-red-400'
+                             : task.priority === 'high'
+                               ? 'border-orange-400'
+                               : 'border-gray-300'}`}
+          >
+            {isCompleted && <Check className="w-4 h-4 text-white" />}
+          </button>
+
+          <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onEditTask(task)}>
+            <p className={`font-semibold text-[15px] leading-snug ${isCompleted ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+              {task.title}
+            </p>
+            {task.description && (
+              <p className={`text-sm text-gray-500 mt-1 whitespace-pre-wrap break-words ${isCompleted ? 'line-through' : ''}`}>
+                {task.description}
+              </p>
+            )}
+            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+              {(task.priority === 'urgent' || task.priority === 'high') && (
+                <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${getPriorityBadgeColor(task.priority)}`}>
+                  {priorityLabel(task.priority)}
+                </span>
+              )}
+              {task.category && (
+                <span className="px-2 py-0.5 rounded-md text-[11px] bg-gray-100 text-gray-500">
+                  {task.category}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* 액션: 보류 / 삭제 */}
+          <div className="flex items-center gap-0.5 flex-shrink-0">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onHoldTask(task.id);
+              }}
+              className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+              title="보류하기"
+            >
+              <PauseCircle className="w-5 h-5" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (confirm('이 업무를 삭제하시겠습니까?')) onDeleteTask(task.id);
+              }}
+              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+              title="삭제"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
       {/* 헤더: 주 이동 */}
@@ -217,105 +310,58 @@ export default function VerticalView({
               </div>
             </div>
 
-            {/* 업무 목록 (넉넉한 영역) */}
+            {/* 업무 목록 (넉넉한 영역) — 미팅 층 / 업무 층 분리 */}
             <div className="p-3 space-y-2 min-h-[88px]">
-              {dayTasks.length === 0 ? (
-                <button
-                  onClick={() => onAddTask(dateStr)}
-                  className="w-full py-6 flex flex-col items-center justify-center gap-1.5 text-gray-300
-                             hover:text-gray-500 hover:bg-gray-50 rounded-xl transition-colors"
-                >
-                  <Plus className="w-6 h-6" />
-                  <span className="text-sm font-medium">
-                    {isDragOver ? '여기에 놓기' : '업무 추가'}
-                  </span>
-                </button>
-              ) : (
-                dayTasks.map((task) => {
-                  const isCompleted = task.status === 'completed';
+              {(() => {
+                if (dayTasks.length === 0) {
                   return (
-                    <div
-                      key={task.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, task)}
-                      onDragEnd={handleDragEnd}
-                      className={`group rounded-xl border p-3.5 transition-all
-                                 ${isCompleted
-                                   ? 'bg-gray-50 border-gray-100'
-                                   : task.priority === 'urgent'
-                                     ? 'bg-red-50/60 border-red-200'
-                                     : task.priority === 'high'
-                                       ? 'bg-orange-50/60 border-orange-200'
-                                       : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm'}
-                                 ${draggedTask?.id === task.id ? 'opacity-50' : ''}`}
+                    <button
+                      onClick={() => onAddTask(dateStr)}
+                      className="w-full py-6 flex flex-col items-center justify-center gap-1.5 text-gray-300
+                                 hover:text-gray-500 hover:bg-gray-50 rounded-xl transition-colors"
                     >
-                      <div className="flex items-start gap-3">
-                        <GripVertical className="w-4 h-4 text-gray-300 flex-shrink-0 mt-1 cursor-move opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <button
-                          onClick={() => onToggleComplete(task)}
-                          className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center mt-0.5
-                                     ${isCompleted
-                                       ? 'bg-gray-400 border-gray-400'
-                                       : task.priority === 'urgent'
-                                         ? 'border-red-400'
-                                         : task.priority === 'high'
-                                           ? 'border-orange-400'
-                                           : 'border-gray-300'}`}
-                        >
-                          {isCompleted && <Check className="w-4 h-4 text-white" />}
-                        </button>
-
-                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onEditTask(task)}>
-                          <p className={`font-semibold text-[15px] leading-snug ${isCompleted ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                            {task.title}
-                          </p>
-                          {task.description && (
-                            <p className={`text-sm text-gray-500 mt-1 whitespace-pre-wrap break-words ${isCompleted ? 'line-through' : ''}`}>
-                              {task.description}
-                            </p>
-                          )}
-                          <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                            {(task.priority === 'urgent' || task.priority === 'high') && (
-                              <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${getPriorityBadgeColor(task.priority)}`}>
-                                {priorityLabel(task.priority)}
-                              </span>
-                            )}
-                            {task.category && (
-                              <span className="px-2 py-0.5 rounded-md text-[11px] bg-gray-100 text-gray-500">
-                                {task.category}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* 액션: 보류 / 삭제 */}
-                        <div className="flex items-center gap-0.5 flex-shrink-0">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onHoldTask(task.id);
-                            }}
-                            className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                            title="보류하기"
-                          >
-                            <PauseCircle className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (confirm('이 업무를 삭제하시겠습니까?')) onDeleteTask(task.id);
-                            }}
-                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                            title="삭제"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                      <Plus className="w-6 h-6" />
+                      <span className="text-sm font-medium">
+                        {isDragOver ? '여기에 놓기' : '업무 추가'}
+                      </span>
+                    </button>
                   );
-                })
-              )}
+                }
+
+                const meetings = dayTasks.filter((t) => t.task_type === 'meeting');
+                const works = dayTasks.filter((t) => t.task_type !== 'meeting');
+
+                // 미팅이 하나도 없으면 층 구분 없이 그대로 표기
+                if (meetings.length === 0) {
+                  return <>{works.map(renderTask)}</>;
+                }
+
+                return (
+                  <div className="space-y-3">
+                    {/* 미팅 층 */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1.5 px-1">
+                        <Users className="w-4 h-4 text-indigo-500" />
+                        <span className="text-xs font-bold text-indigo-600">미팅</span>
+                        <span className="text-xs text-gray-400">{meetings.length}</span>
+                      </div>
+                      {meetings.map(renderTask)}
+                    </div>
+
+                    {/* 업무 층 (있을 때만) */}
+                    {works.length > 0 && (
+                      <div className="space-y-2 pt-1 border-t border-dashed border-gray-200">
+                        <div className="flex items-center gap-1.5 px-1 pt-2">
+                          <Briefcase className="w-4 h-4 text-gray-400" />
+                          <span className="text-xs font-bold text-gray-600">업무</span>
+                          <span className="text-xs text-gray-400">{works.length}</span>
+                        </div>
+                        {works.map(renderTask)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         );

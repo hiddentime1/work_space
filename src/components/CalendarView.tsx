@@ -13,7 +13,9 @@ import {
   EyeOff,
   Trash2,
   ListChecks,
-  PauseCircle
+  PauseCircle,
+  Users,
+  Briefcase
 } from 'lucide-react';
 import { 
   format, 
@@ -206,6 +208,162 @@ export default function CalendarView({
     return { completed, total };
   };
 
+  // 미팅/업무 층 분리: 미팅을 앞쪽 배열로 분리 (없으면 빈 배열)
+  const splitLayers = (dayTasks: Task[]) => ({
+    meetings: dayTasks.filter(t => t.task_type === 'meeting'),
+    works: dayTasks.filter(t => t.task_type !== 'meeting'),
+  });
+
+  // 모바일 업무 카드
+  const renderMobileTask = (task: Task) => {
+    const isCompleted = task.status === 'completed';
+    const isMeeting = task.task_type === 'meeting';
+    return (
+      <div
+        key={task.id}
+        onClick={() => onEditTask(task)}
+        className={`p-4 rounded-xl transition-all active:scale-[0.98] border
+                   ${isCompleted
+                     ? 'bg-gray-100 text-gray-400'
+                     : isMeeting
+                       ? 'bg-indigo-50 border-indigo-200 text-gray-700'
+                       : getPriorityColor(task.priority, isCompleted)}`}
+      >
+        <div className="flex items-start gap-3">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleComplete(task);
+            }}
+            className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center mt-0.5
+                       ${isCompleted
+                         ? 'bg-gray-400 border-gray-400'
+                         : isMeeting
+                           ? 'border-indigo-400'
+                           : task.priority === 'urgent'
+                             ? 'border-red-400'
+                             : task.priority === 'high'
+                               ? 'border-orange-400'
+                               : 'border-gray-300'}`}
+          >
+            {isCompleted && <Check className="w-4 h-4 text-white" />}
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className={`font-medium ${isCompleted ? 'line-through' : ''}`}>{task.title}</p>
+            {task.description && (
+              <p className="text-sm text-gray-500 mt-1 line-clamp-2">{task.description}</p>
+            )}
+            {(task.priority === 'urgent' || task.priority === 'high') && (
+              <span className={`inline-block mt-2 px-2 py-0.5 rounded text-xs font-medium ${getPriorityBadgeColor(task.priority)}`}>
+                {task.priority === 'urgent' ? '긴급' : '높음'}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-0.5 flex-shrink-0">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onHoldTask(task.id);
+              }}
+              className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+              title="보류하기"
+            >
+              <PauseCircle className="w-5 h-5" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (confirm('이 업무를 삭제하시겠습니까?')) onDeleteTask(task.id);
+              }}
+              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+              title="삭제"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 데스크탑 캘린더 칸 업무 카드
+  const renderDesktopTask = (task: Task) => {
+    const isCompleted = task.status === 'completed';
+    const isMeeting = task.task_type === 'meeting';
+    return (
+      <div
+        key={task.id}
+        draggable
+        onDragStart={(e) => handleDragStart(e, task)}
+        onDragEnd={handleDragEnd}
+        onClick={() => onEditTask(task)}
+        className={`group p-2 rounded-lg text-xs cursor-move transition-all hover:shadow-md border
+                   ${isCompleted
+                     ? 'bg-gray-100 text-gray-400 line-through border-gray-100'
+                     : isMeeting
+                       ? 'bg-indigo-50 border-indigo-200 text-gray-700 hover:border-indigo-300'
+                       : task.priority === 'urgent'
+                         ? 'bg-red-50 border-red-200 text-gray-700 hover:border-red-300'
+                         : task.priority === 'high'
+                           ? 'bg-orange-50 border-orange-200 text-gray-700 hover:border-orange-300'
+                           : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'}
+                   ${draggedTask?.id === task.id ? 'opacity-50' : ''}`}
+      >
+        <div className="flex items-start gap-1">
+          <GripVertical className="w-3 h-3 text-gray-300 flex-shrink-0 mt-0.5 opacity-0 group-hover:opacity-100" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleComplete(task);
+                }}
+                className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center
+                           ${isCompleted
+                             ? 'bg-gray-400 border-gray-400'
+                             : isMeeting
+                               ? 'border-indigo-400 hover:border-indigo-500'
+                               : task.priority === 'urgent'
+                                 ? 'border-red-400 hover:border-red-500'
+                                 : task.priority === 'high'
+                                   ? 'border-orange-400 hover:border-orange-500'
+                                   : 'border-gray-300 hover:border-gray-400'}`}
+              >
+                {isCompleted && <Check className="w-2.5 h-2.5 text-white" />}
+              </button>
+              <span className="truncate flex-1">{task.title}</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onHoldTask(task.id);
+                }}
+                className="p-0.5 text-gray-300 hover:text-amber-600 hover:bg-amber-50 rounded opacity-0 group-hover:opacity-100 transition-all"
+                title="보류하기"
+              >
+                <PauseCircle className="w-3 h-3" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm('이 업무를 삭제하시겠습니까?')) onDeleteTask(task.id);
+                }}
+                className="p-0.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all"
+                title="삭제"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+            {task.priority === 'urgent' || task.priority === 'high' ? (
+              <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${getPriorityBadgeColor(task.priority)}`}>
+                {task.priority === 'urgent' ? '긴급' : '높음'}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const gridCols = showWeekend ? 'grid-cols-7' : 'grid-cols-5';
 
   // 모바일 뷰
@@ -282,79 +440,34 @@ export default function CalendarView({
                 업무 추가
               </button>
             </div>
-          ) : (
-            dayTasks.map(task => (
-              <div
-                key={task.id}
-                onClick={() => onEditTask(task)}
-                className={`p-4 rounded-xl transition-all active:scale-[0.98] border
-                           ${getPriorityColor(task.priority, task.status === 'completed')}`}
-              >
-                <div className="flex items-start gap-3">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleComplete(task);
-                    }}
-                    className={`w-6 h-6 rounded-full border-2 flex-shrink-0
-                               flex items-center justify-center mt-0.5
-                               ${task.status === 'completed'
-                                 ? 'bg-gray-400 border-gray-400'
-                                 : task.priority === 'urgent'
-                                   ? 'border-red-400'
-                                   : task.priority === 'high'
-                                     ? 'border-orange-400'
-                                     : 'border-gray-300'}`}
-                  >
-                    {task.status === 'completed' && (
-                      <Check className="w-4 h-4 text-white" />
-                    )}
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <p className={`font-medium ${task.status === 'completed' ? 'line-through' : ''}`}>
-                      {task.title}
-                    </p>
-                    {task.description && (
-                      <p className="text-sm text-gray-500 mt-1 line-clamp-2">
-                        {task.description}
-                      </p>
-                    )}
-                    {(task.priority === 'urgent' || task.priority === 'high') && (
-                      <span className={`inline-block mt-2 px-2 py-0.5 rounded text-xs font-medium
-                                      ${getPriorityBadgeColor(task.priority)}`}>
-                        {task.priority === 'urgent' ? '긴급' : '높음'}
-                      </span>
-                    )}
+          ) : (() => {
+            const { meetings, works } = splitLayers(dayTasks);
+            if (meetings.length === 0) {
+              return <>{works.map(renderMobileTask)}</>;
+            }
+            return (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 px-1">
+                    <Users className="w-4 h-4 text-indigo-500" />
+                    <span className="text-xs font-bold text-indigo-600">미팅</span>
+                    <span className="text-xs text-gray-400">{meetings.length}</span>
                   </div>
-                  {/* 보류 / 삭제 버튼 */}
-                  <div className="flex items-center gap-0.5 flex-shrink-0">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onHoldTask(task.id);
-                      }}
-                      className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                      title="보류하기"
-                    >
-                      <PauseCircle className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm('이 업무를 삭제하시겠습니까?')) {
-                          onDeleteTask(task.id);
-                        }
-                      }}
-                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                      title="삭제"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
+                  {meetings.map(renderMobileTask)}
                 </div>
+                {works.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-dashed border-gray-200">
+                    <div className="flex items-center gap-1.5 px-1">
+                      <Briefcase className="w-4 h-4 text-gray-400" />
+                      <span className="text-xs font-bold text-gray-600">업무</span>
+                      <span className="text-xs text-gray-400">{works.length}</span>
+                    </div>
+                    {works.map(renderMobileTask)}
+                  </div>
+                )}
               </div>
-            ))
-          )}
+            );
+          })()}
         </div>
 
         {/* 하단 추가 버튼 */}
@@ -479,84 +592,33 @@ export default function CalendarView({
                 </div>
               </div>
 
-              {/* 태스크 목록 */}
+              {/* 태스크 목록 (미팅 층 / 업무 층 분리) */}
               <div className="flex-1 p-1 space-y-1">
-                {dayTasks.map(task => (
-                  <div
-                    key={task.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, task)}
-                    onDragEnd={handleDragEnd}
-                    onClick={() => onEditTask(task)}
-                    className={`group p-2 rounded-lg text-xs cursor-move
-                               transition-all hover:shadow-md border
-                               ${task.status === 'completed' 
-                                 ? 'bg-gray-100 text-gray-400 line-through border-gray-100' 
-                                 : task.priority === 'urgent'
-                                   ? 'bg-red-50 border-red-200 text-gray-700 hover:border-red-300'
-                                   : task.priority === 'high'
-                                     ? 'bg-orange-50 border-orange-200 text-gray-700 hover:border-orange-300'
-                                     : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'}
-                               ${draggedTask?.id === task.id ? 'opacity-50' : ''}`}
-                  >
-                    <div className="flex items-start gap-1">
-                      <GripVertical className="w-3 h-3 text-gray-300 flex-shrink-0 mt-0.5 opacity-0 group-hover:opacity-100" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onToggleComplete(task);
-                            }}
-                            className={`w-3.5 h-3.5 rounded border flex-shrink-0
-                                       flex items-center justify-center
-                                       ${task.status === 'completed'
-                                         ? 'bg-gray-400 border-gray-400'
-                                         : task.priority === 'urgent'
-                                           ? 'border-red-400 hover:border-red-500'
-                                           : task.priority === 'high'
-                                             ? 'border-orange-400 hover:border-orange-500'
-                                             : 'border-gray-300 hover:border-gray-400'}`}
-                          >
-                            {task.status === 'completed' && (
-                              <Check className="w-2.5 h-2.5 text-white" />
-                            )}
-                          </button>
-                          <span className="truncate flex-1">{task.title}</span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onHoldTask(task.id);
-                            }}
-                            className="p-0.5 text-gray-300 hover:text-amber-600 hover:bg-amber-50 rounded opacity-0 group-hover:opacity-100 transition-all"
-                            title="보류하기"
-                          >
-                            <PauseCircle className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (confirm('이 업무를 삭제하시겠습니까?')) {
-                                onDeleteTask(task.id);
-                              }
-                            }}
-                            className="p-0.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all"
-                            title="삭제"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                        {task.priority === 'urgent' || task.priority === 'high' ? (
-                          <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium
-                                          ${getPriorityBadgeColor(task.priority)}`}>
-                            {task.priority === 'urgent' ? '긴급' : '높음'}
-                          </span>
-                        ) : null}
+                {(() => {
+                  const { meetings, works } = splitLayers(dayTasks);
+                  if (meetings.length === 0) {
+                    return <>{works.map(renderDesktopTask)}</>;
+                  }
+                  return (
+                    <>
+                      <div className="flex items-center gap-1 px-1 pt-0.5">
+                        <Users className="w-3 h-3 text-indigo-500" />
+                        <span className="text-[10px] font-bold text-indigo-600">미팅 {meetings.length}</span>
                       </div>
-                    </div>
-                  </div>
-                ))}
-                
+                      {meetings.map(renderDesktopTask)}
+                      {works.length > 0 && (
+                        <>
+                          <div className="flex items-center gap-1 px-1 pt-1.5 mt-1 border-t border-dashed border-gray-200">
+                            <Briefcase className="w-3 h-3 text-gray-400" />
+                            <span className="text-[10px] font-bold text-gray-500">업무 {works.length}</span>
+                          </div>
+                          {works.map(renderDesktopTask)}
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
+
                 {dayTasks.length === 0 && (
                   <div className="h-full flex items-center justify-center">
                     {isDragOver ? (

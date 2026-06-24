@@ -102,6 +102,7 @@ export async function POST(request: NextRequest) {
         title: body.title.trim(),
         description: body.description?.trim() || null,
         priority: body.priority || 'medium',
+        task_type: body.task_type || 'task',
         due_date: body.due_date || null,
         reminder_time: body.reminder_time || null,
         category: body.category?.trim() || null,

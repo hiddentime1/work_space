@@ -14,6 +14,7 @@ import {
   ExternalLink,
   CalendarPlus,
   Trash2,
+  Users,
 } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -124,19 +125,24 @@ export default function WorkSidebar({
   return (
     <>
       {/* 좌측 아이콘 레일 */}
-      <nav className="fixed left-0 top-0 h-full w-16 bg-white border-r border-gray-200 z-50 flex flex-col items-center pt-20 gap-1">
+      <nav
+        className="fixed z-50 bg-white border-gray-200 flex
+                   inset-x-0 bottom-0 h-16 flex-row items-stretch justify-around border-t
+                   md:inset-x-auto md:left-0 md:top-0 md:h-full md:w-16 md:flex-col md:items-center md:justify-start md:border-t-0 md:border-r md:pt-20 md:gap-1"
+      >
         {menus.map(({ key, icon: Icon, label, badge }) => (
           <button
             key={key}
             onClick={() => toggle(key)}
-            className={`relative w-12 h-14 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors
-                       ${active === key ? 'bg-blue-50 text-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}
+            className={`relative flex flex-col items-center justify-center gap-1 transition-colors
+                       flex-1 md:flex-none md:w-12 md:h-14 md:rounded-xl
+                       ${active === key ? 'text-blue-600 md:bg-blue-50' : 'text-gray-500 hover:bg-gray-100'}`}
             title={label}
           >
             <Icon className="w-5 h-5" />
             <span className="text-[10px] font-semibold">{label}</span>
             {badge ? (
-              <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
+              <span className="absolute top-1.5 right-1/2 translate-x-3 md:right-1 md:translate-x-0 bg-red-500 text-white text-[9px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
                 {badge}
               </span>
             ) : null}
@@ -148,7 +154,11 @@ export default function WorkSidebar({
       {active && (
         <>
           <div className="fixed inset-0 bg-black/30 z-40 lg:bg-black/10" onClick={close} />
-          <div className="fixed left-16 top-0 h-full w-[340px] max-w-[calc(100vw-4rem)] bg-white shadow-xl border-r border-gray-200 z-50 flex flex-col modal-slide-up">
+          <div
+            className="fixed bg-white shadow-xl z-50 flex flex-col modal-slide-up
+                       inset-x-0 bottom-16 max-h-[72vh] rounded-t-2xl border-t border-gray-200
+                       md:inset-x-auto md:left-16 md:top-0 md:bottom-0 md:max-h-none md:h-full md:w-[340px] md:max-w-[calc(100vw-4rem)] md:rounded-none md:border-t-0 md:border-r"
+          >
             {/* ===== 메모 패널 ===== */}
             {active === 'memo' && (
               <>
@@ -379,6 +389,12 @@ function OnHoldCard({
         <p className="text-sm text-gray-500 mt-1 whitespace-pre-wrap break-words">{task.description}</p>
       )}
       <div className="flex flex-wrap items-center gap-1.5 mt-2">
+        {task.task_type === 'meeting' && (
+          <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-50 text-indigo-600 flex items-center gap-1">
+            <Users className="w-3 h-3" />
+            미팅
+          </span>
+        )}
         {(task.priority === 'urgent' || task.priority === 'high') && (
           <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${task.priority === 'urgent' ? 'bg-red-500 text-white' : 'bg-orange-500 text-white'}`}>
             {task.priority === 'urgent' ? '긴급' : '높음'}

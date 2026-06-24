@@ -5,6 +5,9 @@ export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'overdue' | '
 // 우선순위 타입
 export type Priority = 'low' | 'medium' | 'high' | 'urgent';
 
+// 업무 유형 (task: 일반 업무, meeting: 미팅)
+export type TaskType = 'task' | 'meeting';
+
 // Task 인터페이스
 export interface Task {
   id: string;
@@ -12,6 +15,7 @@ export interface Task {
   description?: string;
   status: TaskStatus;
   priority: Priority;
+  task_type?: TaskType;
   due_date?: string;
   reminder_time?: string;
   created_at: string;
@@ -26,6 +30,7 @@ export interface CreateTaskInput {
   title: string;
   description?: string;
   priority: Priority;
+  task_type?: TaskType;
   due_date?: string;
   reminder_time?: string;
   category?: string;
@@ -37,6 +42,7 @@ export interface UpdateTaskInput {
   description?: string;
   status?: TaskStatus;
   priority?: Priority;
+  task_type?: TaskType;
   due_date?: string;
   reminder_time?: string;
   category?: string;

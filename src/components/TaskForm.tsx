@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Task, CreateTaskInput, UpdateTaskInput, Priority } from '@/types';
-import { X } from 'lucide-react';
+import { Task, CreateTaskInput, UpdateTaskInput, Priority, TaskType } from '@/types';
+import { X, Briefcase, Users } from 'lucide-react';
 
 interface TaskFormProps {
   task?: Task | null;
@@ -28,6 +28,7 @@ export default function TaskForm({ task, defaultDate, onSubmit, onClose }: TaskF
   const [title, setTitle] = useState(task?.title || '');
   const [description, setDescription] = useState(task?.description || '');
   const [priority, setPriority] = useState<Priority>(task?.priority || 'medium');
+  const [taskType, setTaskType] = useState<TaskType>(task?.task_type || 'task');
   // 우선순위: 수정 시 기존 날짜 > defaultDate > 오늘
   const [dueDate, setDueDate] = useState(
     task?.due_date ? task.due_date.split('T')[0] : (defaultDate || getTodayString())
@@ -45,6 +46,7 @@ export default function TaskForm({ task, defaultDate, onSubmit, onClose }: TaskF
       title: title.trim(),
       description: description.trim() || undefined,
       priority,
+      task_type: taskType,
       due_date: dueDate ? new Date(dueDate).toISOString() : undefined,
       category: category.trim() || undefined,
     };
@@ -79,6 +81,37 @@ export default function TaskForm({ task, defaultDate, onSubmit, onClose }: TaskF
 
         {/* 폼 */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* 유형: 업무 / 미팅 */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1.5 block">
+              유형
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setTaskType('task')}
+                className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold border transition-colors
+                           ${taskType === 'task'
+                             ? 'bg-gray-900 text-white border-gray-900'
+                             : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}`}
+              >
+                <Briefcase className="w-4 h-4" />
+                업무
+              </button>
+              <button
+                type="button"
+                onClick={() => setTaskType('meeting')}
+                className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold border transition-colors
+                           ${taskType === 'meeting'
+                             ? 'bg-indigo-600 text-white border-indigo-600'
+                             : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}`}
+              >
+                <Users className="w-4 h-4" />
+                미팅
+              </button>
+            </div>
+          </div>
+
           {/* 제목 */}
           <div>
             <label className="text-sm font-medium text-gray-700 mb-1.5 block">
